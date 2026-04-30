@@ -1,0 +1,12 @@
+.DS_Store
+.data/
+.logs/
+node_modules/
+dist/
+build/
+.gradle/
+.idea/
+*.iml
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal

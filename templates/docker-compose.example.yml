@@ -1,0 +1,33 @@
+services:
+  backend:
+    build:
+      context: ./backend
+    environment:
+      DB_URL: jdbc:sqlite:/data/app.sqlite
+      CODEX_APP_SERVER_URL: ws://codex-app-server:8765
+      CODEX_APP_SERVER_MANAGED: "false"
+    volumes:
+      - app-data:/data
+    depends_on:
+      - codex-app-server
+
+  frontend:
+    build:
+      context: ./frontend
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+
+  codex-app-server:
+    build:
+      context: ./codex-app-server
+    command: codex app-server --listen ws://0.0.0.0:8765
+    expose:
+      - "8765"
+    volumes:
+      - ${CODEX_HOME:-~/.codex}:/home/codex/.codex:ro
+
+volumes:
+  app-data:
+
