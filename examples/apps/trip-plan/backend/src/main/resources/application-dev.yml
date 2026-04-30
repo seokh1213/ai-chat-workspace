@@ -1,0 +1,7 @@
+app:
+  seed:
+    enabled: true
+  ai:
+    codex-app-server:
+      managed: ${CODEX_APP_SERVER_MANAGED:true}
+      restart-on-exit: ${CODEX_APP_SERVER_RESTART_ON_EXIT:true}

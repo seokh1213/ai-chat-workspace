@@ -1,0 +1,28 @@
+.data/
+.logs/
+.codex-session.json
+.DS_Store
+
+# External trip source data
+data/
+docs/seed/*.local.sql
+
+# Node / frontend
+node_modules/
+dist/
+.vite/
+*.tsbuildinfo
+
+# Kotlin / Gradle
+.gradle/
+build/
+out/
+
+# Local database files
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+
+# IDE
+.idea/
+*.iml

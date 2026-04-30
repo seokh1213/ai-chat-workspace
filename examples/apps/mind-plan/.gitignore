@@ -1,0 +1,11 @@
+.DS_Store
+.data/
+.gradle/
+build/
+backend/build/
+frontend/node_modules/
+frontend/dist/
+*.log
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal

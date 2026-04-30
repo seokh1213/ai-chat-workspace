@@ -31,26 +31,27 @@ Workspace
     Checkpoints
 ```
 
-## 원본 프로젝트
+## Examples
+
+실행 가능한 예제 앱은 `examples/` 아래에 둔다. Git 이력은 포함하지 않고 소스만 둔다.
+
+```text
+examples/
+  apps/
+    trip-plan/ # 여행 계획 + 지도 + AI 편집, 원본 trip-planner 기반
+    mind-plan/ # 마인드/생각 정리 도메인 예제
+    todo-ai/   # 최소 Todo 도메인 + Codex app-server 예제
+  reusable/
+    frontend/  # 재사용 가능한 React 채팅 조각
+    backend/   # 재사용 가능한 Spring/Kotlin 조각
+```
 
 참고 원본:
 
 ```text
 /Users/user/personal/여행/오키나와/trip-planner
+/Users/user/personal/mind-plan
 ```
-
-현재 원본에서 재사용 가치가 큰 파일군:
-
-- `frontend/src/App.tsx`
-- `frontend/src/styles.css`
-- `frontend/src/api.ts`
-- `frontend/src/types.ts`
-- `backend/src/main/kotlin/app/tripplanner/chat`
-- `backend/src/main/kotlin/app/tripplanner/ai`
-- `backend/src/main/kotlin/app/tripplanner/workspace`
-- `backend/src/main/resources/db/migration`
-- `docs/REBUILD_AI_PROVIDERS.md`
-- `docs/REBUILD_CODEX_APPSERVER.md`
 
 ## 문서 순서
 

@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>오키나와 AI 여행 플래너</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="workspace" aria-label="지도와 일정">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Okinawa</p>
+            <h1>오키나와 여행 플래너</h1>
+          </div>
+        </header>
+
+        <section class="planner-body" aria-label="지도와 작업 사이드바">
+          <aside class="planner-sidebar" aria-label="일정과 조사 장소">
+            <div class="sidebar-topline">
+              <span>여행 작업</span>
+              <button class="panel-collapse-button" type="button" title="왼쪽 사이드바 접기" aria-label="왼쪽 사이드바 접기" data-toggle-panel="sidebar">
+                <i data-lucide="panel-left-close"></i>
+              </button>
+            </div>
+
+            <section class="sidebar-section schedule-section" data-sidebar-section="schedule" aria-label="일정">
+              <button
+                class="sidebar-section-toggle"
+                type="button"
+                aria-expanded="true"
+                aria-controls="schedule-section-body"
+                data-toggle-section="schedule"
+              >
+                <span class="sidebar-section-title">
+                  <i data-lucide="calendar-days"></i>
+                  <span>일정</span>
+                </span>
+                <i data-lucide="chevron-up" data-section-chevron></i>
+              </button>
+              <div id="schedule-section-body" class="sidebar-section-body schedule-body">
+                <div class="day-tabs" id="day-tabs"></div>
+                <div id="plan-list" class="plan-list"></div>
+              </div>
+            </section>
+
+            <section class="sidebar-section places-section" data-sidebar-section="places" aria-label="조사 장소">
+              <button
+                class="sidebar-section-toggle"
+                type="button"
+                aria-expanded="true"
+                aria-controls="places-section-body"
+                data-toggle-section="places"
+              >
+                <span class="sidebar-section-title">
+                  <i data-lucide="map-pin"></i>
+                  <span>조사 장소</span>
+                </span>
+                <i data-lucide="chevron-up" data-section-chevron></i>
+              </button>
+              <div id="places-section-body" class="sidebar-section-body places-body">
+                <div class="panel-toolbar">
+                  <label class="search-box">
+                    <i data-lucide="search"></i>
+                    <input id="place-search" type="search" placeholder="장소 검색" />
+                  </label>
+                </div>
+                <div id="place-list" class="place-list"></div>
+              </div>
+            </section>
+          </aside>
+
+          <section class="map-zone" aria-label="지도">
+            <div class="map-panel-controls" aria-label="닫힌 패널 열기">
+              <button class="map-panel-button map-panel-button-left" type="button" title="일정과 장소 열기" aria-label="일정과 장소 열기" data-open-panel="sidebar" hidden>
+                <i data-lucide="panel-left-open"></i>
+                <span>목록</span>
+              </button>
+              <button class="map-panel-button map-panel-button-right" type="button" title="AI 상담 열기" aria-label="AI 상담 열기" data-open-panel="chat" hidden>
+                <span>상담</span>
+                <i data-lucide="panel-right-open"></i>
+              </button>
+            </div>
+            <div id="map" class="map"></div>
+          </section>
+        </section>
+      </section>
+
+      <div
+        id="shell-resizer"
+        class="pane-resizer shell-resizer"
+        role="separator"
+        aria-label="AI 채팅 패널 크기 조절"
+        aria-orientation="vertical"
+        tabindex="0"
+      ></div>
+
+      <aside class="chat-panel" aria-label="AI 채팅">
+        <header class="chat-header">
+          <div>
+            <p class="eyebrow">AI Planner</p>
+            <h2>동선 상담</h2>
+          </div>
+          <div class="chat-header-actions">
+            <button id="rollback-latest" class="panel-collapse-button" type="button" title="최근 변경 되돌리기" aria-label="최근 변경 되돌리기">
+              <i data-lucide="undo-2"></i>
+            </button>
+            <button class="panel-collapse-button" type="button" title="AI 상담 접기" aria-label="AI 상담 접기" data-toggle-panel="chat">
+              <i data-lucide="panel-right-close"></i>
+            </button>
+          </div>
+        </header>
+        <div id="chat-log" class="chat-log"></div>
+        <form id="chat-form" class="chat-form">
+          <textarea id="chat-input" rows="3" placeholder="예: Day 2에 코우리해변 추가해줘"></textarea>
+          <button type="submit" title="보내기" aria-label="보내기">
+            <i data-lucide="send"></i>
+          </button>
+        </form>
+      </aside>
+    </main>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
+    <script src="./data/places.js"></script>
+    <script src="./data/plan.js"></script>
+    <script src="./app.js"></script>
+  </body>
+</html>

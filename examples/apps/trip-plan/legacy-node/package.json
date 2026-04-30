@@ -1,0 +1,9 @@
+{
+  "name": "okinawa-trip-planner",
+  "private": true,
+  "version": "0.1.0",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js"
+  }
+}

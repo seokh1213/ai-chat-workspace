@@ -1,0 +1,25 @@
+server:
+  port: 8082
+
+spring:
+  application:
+    name: todo-ai-workspace
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+app:
+  ai:
+    codex-app-server:
+      url: ${CODEX_APP_SERVER_URL:ws://127.0.0.1:8765}
+      model: ${CODEX_APP_SERVER_MODEL:gpt-5.4-mini}
+      effort: ${CODEX_APP_SERVER_EFFORT:medium}
+      timeout-seconds: ${CODEX_APP_SERVER_TIMEOUT_SECONDS:180}
+      cwd: ${CODEX_APP_SERVER_CWD:/tmp}
+
+logging:
+  level:
+    app.todoai: DEBUG

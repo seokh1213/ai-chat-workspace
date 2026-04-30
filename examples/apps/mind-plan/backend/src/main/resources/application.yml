@@ -1,0 +1,36 @@
+spring:
+  application:
+    name: mind-plan
+  datasource:
+    url: ${MIND_PLAN_DB_URL:jdbc:sqlite:.data/mind-plan.sqlite}
+    driver-class-name: org.sqlite.JDBC
+    hikari:
+      connection-init-sql: PRAGMA foreign_keys=ON
+      maximum-pool-size: 1
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+server:
+  port: ${PORT:8091}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+app:
+  seed:
+    enabled: ${MIND_PLAN_SEED_ENABLED:true}
+    locations: classpath*:db/seed/*.sql
+  ai:
+    default-provider: ${MIND_PLAN_AI_PROVIDER:local-rule}
+    claude:
+      command: ${MIND_PLAN_CLAUDE_COMMAND:claude}
+      model: ${MIND_PLAN_CLAUDE_MODEL:}
+      timeout-seconds: ${MIND_PLAN_CLAUDE_TIMEOUT_SECONDS:120}
