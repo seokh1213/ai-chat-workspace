@@ -53,6 +53,7 @@ class CodexAppServerClient(
         connection.use { rpc ->
             var activeThreadId: String? = null
             var activeTurnId: String? = null
+            var recoveredFromThreadId: String? = null
             rpc.request(
                 method = Method.INITIALIZE,
                 params = CodexAppServerProtocol.initializeParams(),
@@ -69,11 +70,24 @@ class CodexAppServerClient(
                             threadId,
                             request.runId,
                         )
+                        recoveredFromThreadId = threadId
                         rpc.startThread(request = request, developerInstructions = developerInstructions)
                     }.getOrThrow()
                 }
                 ?: rpc.startThread(request = request, developerInstructions = developerInstructions)
             activeThreadId = threadId
+            val turnPrompt = recoveredFromThreadId
+                ?.let { missingThreadId ->
+                    """
+                    이전 Codex thread를 재개할 수 없어 새 thread로 복구했습니다.
+                    재개 실패 thread id: $missingThreadId
+                    아래 prompt에는 DB에 저장된 최근 대화와 현재 여행 상태가 포함되어 있습니다.
+                    기존 대화가 이어지는 상황으로 간주하고, 같은 맥락에서 답변하세요.
+
+                    $prompt
+                    """.trimIndent()
+                }
+                ?: prompt
 
             val turnStart = rpc.request(
                 method = Method.TURN_START,
@@ -81,7 +95,7 @@ class CodexAppServerClient(
                     threadId = threadId,
                     request = request,
                     properties = properties,
-                    prompt = prompt,
+                    prompt = turnPrompt,
                     outputSchema = outputSchema,
                 ),
             )
