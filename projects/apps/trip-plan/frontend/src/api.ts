@@ -125,6 +125,13 @@ export function updatePlace(placeId: string, payload: UpsertPlaceRequest): Promi
   });
 }
 
+export function addPlace(tripId: string, payload: UpsertPlaceRequest): Promise<Place> {
+  return requestJson<Place>(`/api/trips/${tripId}/places`, {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
 export async function deletePlace(placeId: string): Promise<void> {
   const response = await fetch(`/api/places/${placeId}`, { method: "DELETE" });
   if (!response.ok) {

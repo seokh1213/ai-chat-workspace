@@ -260,6 +260,45 @@ class TripService(
     }
 
     @Transactional
+    fun addPlace(tripId: String, request: UpsertPlaceRequest): PlaceDto {
+        validatePlaceRequest(request)
+        repository.findTrip(tripId) ?: throw NoSuchElementException("Trip not found.")
+        val beforeState = snapshot(tripId)
+        val now = clockProvider.nowText()
+        val place = PlaceDto(
+            id = "place_${UUID.randomUUID()}",
+            tripId = tripId,
+            name = request.name.trim(),
+            category = request.category?.trim().takeUnless { it.isNullOrEmpty() },
+            rating = null,
+            reviews = null,
+            note = request.note?.trim().takeUnless { it.isNullOrEmpty() },
+            address = request.address?.trim().takeUnless { it.isNullOrEmpty() },
+            source = request.source?.trim().takeUnless { it.isNullOrEmpty() } ?: "manual",
+            sourceUrl = request.sourceUrl?.trim().takeUnless { it.isNullOrEmpty() },
+            imageUrl = request.imageUrl?.trim().takeUnless { it.isNullOrEmpty() },
+            lat = request.lat,
+            lng = request.lng,
+            status = if (request.lat != null && request.lng != null) "ready" else "needs_coordinates",
+            rawJson = objectMapper.writeValueAsString(request),
+            createdAt = now,
+            updatedAt = now,
+        )
+        repository.insertPlace(place)
+        val afterState = snapshot(tripId)
+        recordCheckpoint(
+            tripId = tripId,
+            label = "조사 장소 추가",
+            reason = place.name,
+            source = "manual",
+            beforeState = beforeState,
+            afterState = afterState,
+            operations = listOf(mapOf("type" to "create_place", "placeId" to place.id)),
+        )
+        return place
+    }
+
+    @Transactional
     fun updatePlace(placeId: String, request: UpsertPlaceRequest): PlaceDto {
         validatePlaceRequest(request)
         val existing = repository.findPlace(placeId) ?: throw NoSuchElementException("Place not found.")

@@ -36,11 +36,13 @@ import {
   useRef,
   useState
 } from "react";
+import { createRoot } from "react-dom/client";
 import ReactMarkdown from "react-markdown";
 import remarkBreaks from "remark-breaks";
 import remarkGfm from "remark-gfm";
 import {
   addItineraryItem,
+  addPlace,
   cancelCurrentChatRun,
   createChatSession,
   createTrip,
@@ -89,7 +91,7 @@ import type {
 type Screen = "select" | "create" | "edit";
 type LoadState = "loading" | "ready" | "error";
 type MapTileMode = "english" | "local";
-type MobileEditorView = "planner" | "chat";
+type MobileEditorView = "details" | "map" | "chat";
 type TripFormState = {
   title: string;
   destinationName: string;
@@ -209,6 +211,7 @@ const aiEffortOptions: AiEffortOption[] = [
 const markdownPlugins = [remarkGfm, remarkBreaks, remarkLenientStrong];
 const editorLayoutStorageKey = "trip-planner-editor-layout";
 const mapTileModeStorageKey = "trip-planner-map-tile-mode-v2";
+const mapViewStoragePrefix = "trip-planner-map-view";
 const chatDraftStoragePrefix = "trip-planner-chat-draft";
 const defaultEditorLayout: EditorLayout = {
   plannerWidth: 440,
@@ -954,9 +957,13 @@ function App() {
 
   async function submitPlace(event: FormEvent) {
     event.preventDefault();
-    if (!editingPlaceId || !placeForm.name.trim()) return;
+    if (!activeTrip || !placeForm.name.trim()) return;
 
-    await updatePlace(editingPlaceId, placeForm);
+    if (editingPlaceId) {
+      await updatePlace(editingPlaceId, placeForm);
+    } else {
+      await addPlace(activeTrip.id, placeForm);
+    }
     setEditingPlaceId(null);
     setPlaceForm(emptyPlaceForm);
     await refreshTripState();
@@ -1176,6 +1183,11 @@ function App() {
         onItemFormChange={setItemForm}
         onSubmitItem={submitItem}
         onEditItem={startEditItem}
+        onCancelEditItem={() => {
+          setEditingItemId(null);
+          setFocusedItemId(null);
+          setItemForm(emptyItemForm);
+        }}
         onUsePlace={usePlaceAsItem}
         placeForm={placeForm}
         editingPlaceId={editingPlaceId}
@@ -1799,6 +1811,7 @@ function EditorScreen(props: {
   onItemFormChange: (form: UpsertItineraryItemRequest) => void;
   onSubmitItem: (event: FormEvent) => void;
   onEditItem: (item: ItineraryItem) => void;
+  onCancelEditItem: () => void;
   onUsePlace: (place: Place) => void;
   placeForm: UpsertPlaceRequest;
   editingPlaceId: string | null;
@@ -1807,7 +1820,7 @@ function EditorScreen(props: {
   onEditPlace: (place: Place) => void;
   onCancelEditPlace: () => void;
   onDeletePlace: (place: Place) => void;
-  onFocusItem: (itemId: string) => void;
+  onFocusItem: (itemId: string | null) => void;
   onDeleteItem: (itemId: string) => void;
   onBack: () => void;
   chatSessions: ChatSession[];
@@ -1841,21 +1854,33 @@ function EditorScreen(props: {
   const routeNumbers = new Map<string, number>();
   props.dayItems.filter(hasCoordinates).forEach((item, index) => routeNumbers.set(item.id, index + 1));
   const visiblePlaces = dedupePlaces(props.tripState.places);
+  const itemCountByDay = new Map<string, number>();
+  props.tripState.itineraryItems.forEach((item) => {
+    itemCountByDay.set(item.tripDayId, (itemCountByDay.get(item.tripDayId) ?? 0) + 1);
+  });
   const [expandedItems, setExpandedItems] = useState<Set<string>>(() => new Set());
   const [expandedPlaces, setExpandedPlaces] = useState<Set<string>>(() => new Set());
+  const [isAddingItem, setIsAddingItem] = useState(false);
+  const [isAddingPlace, setIsAddingPlace] = useState(false);
+  const [focusedMapPlaceId, setFocusedMapPlaceId] = useState<string | null>(null);
+  const [detailHighlight, setDetailHighlight] = useState<{ type: "item" | "place"; id: string } | null>(null);
   const activeChatSession = props.chatSessions.find((session) => session.id === props.activeChatId) ?? null;
   const [chatTitleDraft, setChatTitleDraft] = useState(activeChatSession?.title ?? "");
   const [isChatTitleSaving, setIsChatTitleSaving] = useState(false);
   const [isChatMarkdownCopied, setIsChatMarkdownCopied] = useState(false);
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
   const [showScrollToLatest, setShowScrollToLatest] = useState(false);
-  const [mobileView, setMobileView] = useState<MobileEditorView>(() => (props.activeChatId ? "chat" : "planner"));
+  const [mobileView, setMobileViewState] = useState<MobileEditorView>(() => readMobileViewFromUrl() ?? (props.activeChatId ? "chat" : "map"));
+  const isMobileInput = isMobileUserAgent();
   const lineBreakModifier = isWindowsUserAgent() ? "Alt" : "Option";
   const chatLogRef = useRef<HTMLDivElement | null>(null);
   const shouldAutoScrollChatRef = useRef(true);
+  const focusClearTimerRef = useRef<number | null>(null);
+  const detailFocusClearTimerRef = useRef<number | null>(null);
+  const suppressDetailHighlightClearRef = useRef(false);
   const editorClassName = [
     props.className,
-    mobileView === "chat" ? "mobile-chat-open" : "mobile-planner-open",
+    `mobile-${mobileView}-open`,
     props.activeChatId ? "mobile-chat-detail" : "mobile-chat-list"
   ]
     .filter(Boolean)
@@ -1867,10 +1892,34 @@ function EditorScreen(props: {
   } as CSSProperties;
 
   useEffect(() => {
-    if (props.activeChatId) {
+    if (props.activeChatId && !readMobileViewFromUrl()) {
       setMobileView("chat");
     }
   }, [props.activeChatId]);
+
+  useEffect(() => {
+    return () => {
+      if (focusClearTimerRef.current != null) window.clearTimeout(focusClearTimerRef.current);
+      if (detailFocusClearTimerRef.current != null) window.clearTimeout(detailFocusClearTimerRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    const handlePopState = () => {
+      const nextView = readMobileViewFromUrl();
+      if (nextView) setMobileViewState(nextView);
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
+  useEffect(() => {
+    if (props.editingItemId) setIsAddingItem(false);
+  }, [props.editingItemId]);
+
+  useEffect(() => {
+    if (props.editingPlaceId) setIsAddingPlace(false);
+  }, [props.editingPlaceId]);
 
   useLayoutEffect(() => {
     setChatTitleDraft(activeChatSession?.title ?? "");
@@ -1918,6 +1967,15 @@ function EditorScreen(props: {
     }
   }
 
+  function pauseChatAutoScroll() {
+    const chatLog = chatLogRef.current;
+    if (!chatLog || isChatLogNearBottom(chatLog)) return;
+    shouldAutoScrollChatRef.current = false;
+    if (props.isChatSending || props.chatStreamingText) {
+      setShowScrollToLatest(true);
+    }
+  }
+
   function submitChatForm(event: FormEvent) {
     shouldAutoScrollChatRef.current = true;
     setShowScrollToLatest(false);
@@ -1959,8 +2017,132 @@ function EditorScreen(props: {
     setMobileView("chat");
   }
 
+  function setMobileView(nextView: MobileEditorView) {
+    setMobileViewState(nextView);
+    writeMobileViewToUrl(nextView);
+  }
+
   function closeMobileChat() {
-    setMobileView("planner");
+    setMobileView("map");
+  }
+
+  function openMobileDetails() {
+    if (props.plannerCollapsed) {
+      props.onTogglePlanner();
+    }
+    setMobileView("details");
+  }
+
+  function openMobileMap() {
+    setMobileView("map");
+  }
+
+  function startAddItem() {
+    props.onCancelEditItem();
+    props.onItemFormChange(emptyItemForm);
+    setIsAddingItem(true);
+    setMobileView("details");
+    if (props.scheduleCollapsed) props.onToggleSchedule();
+  }
+
+  function startAddPlace() {
+    props.onCancelEditPlace();
+    props.onPlaceFormChange(emptyPlaceForm);
+    setIsAddingPlace(true);
+    setMobileView("details");
+    if (props.placesCollapsed) props.onTogglePlaces();
+  }
+
+  function cancelItemForm() {
+    setIsAddingItem(false);
+    props.onCancelEditItem();
+  }
+
+  function cancelPlaceForm() {
+    setIsAddingPlace(false);
+    props.onCancelEditPlace();
+  }
+
+  function submitItemForm(event: FormEvent) {
+    void Promise.resolve(props.onSubmitItem(event)).then(() => setIsAddingItem(false));
+  }
+
+  function submitPlaceForm(event: FormEvent) {
+    void Promise.resolve(props.onSubmitPlace(event)).then(() => setIsAddingPlace(false));
+  }
+
+  function focusItemOnMap(itemId: string) {
+    if (focusClearTimerRef.current != null) {
+      window.clearTimeout(focusClearTimerRef.current);
+    }
+    setFocusedMapPlaceId(null);
+    props.onFocusItem(itemId);
+    setMobileView("map");
+    focusClearTimerRef.current = window.setTimeout(() => {
+      props.onFocusItem(null);
+      focusClearTimerRef.current = null;
+    }, 2000);
+  }
+
+  function focusPlaceOnMap(place: Place) {
+    if (focusClearTimerRef.current != null) {
+      window.clearTimeout(focusClearTimerRef.current);
+    }
+    props.onFocusItem(null);
+    setFocusedMapPlaceId(place.id);
+    setMobileView("map");
+    focusClearTimerRef.current = window.setTimeout(() => {
+      setFocusedMapPlaceId(null);
+      focusClearTimerRef.current = null;
+    }, 2000);
+  }
+
+  function showItemDetails(itemId: string) {
+    if (focusClearTimerRef.current != null) {
+      window.clearTimeout(focusClearTimerRef.current);
+      focusClearTimerRef.current = null;
+    }
+    if (detailFocusClearTimerRef.current != null) {
+      window.clearTimeout(detailFocusClearTimerRef.current);
+      detailFocusClearTimerRef.current = null;
+    }
+    setDetailHighlight({ type: "item", id: itemId });
+    setFocusedMapPlaceId(null);
+    setMobileView("details");
+    if (props.scheduleCollapsed) props.onToggleSchedule();
+    suppressDetailHighlightClearRef.current = true;
+    window.requestAnimationFrame(() => scrollDetailNodeIntoView(`[data-detail-item-id="${cssEscapeValue(itemId)}"]`));
+    window.setTimeout(() => {
+      suppressDetailHighlightClearRef.current = false;
+    }, 650);
+  }
+
+  function showPlaceDetails(placeId: string) {
+    if (focusClearTimerRef.current != null) {
+      window.clearTimeout(focusClearTimerRef.current);
+      focusClearTimerRef.current = null;
+    }
+    if (detailFocusClearTimerRef.current != null) {
+      window.clearTimeout(detailFocusClearTimerRef.current);
+    }
+    setDetailHighlight({ type: "place", id: placeId });
+    setFocusedMapPlaceId(null);
+    setMobileView("details");
+    if (props.placesCollapsed) props.onTogglePlaces();
+    suppressDetailHighlightClearRef.current = true;
+    window.requestAnimationFrame(() => scrollDetailNodeIntoView(`[data-detail-place-id="${cssEscapeValue(placeId)}"]`));
+    window.setTimeout(() => {
+      suppressDetailHighlightClearRef.current = false;
+    }, 650);
+  }
+
+  function clearDetailHighlight() {
+    if (suppressDetailHighlightClearRef.current) return;
+    if (detailHighlight) setDetailHighlight(null);
+    if (detailFocusClearTimerRef.current != null) {
+      window.clearTimeout(detailFocusClearTimerRef.current);
+      detailFocusClearTimerRef.current = null;
+    }
   }
 
   function openChatList() {
@@ -2084,7 +2266,27 @@ function EditorScreen(props: {
             onDelete={props.onDeleteTrip}
           />
 
-          <div className="planner-sections">
+          <nav className="mobile-day-picker" aria-label="날짜 선택">
+            {props.tripState.days.map((day) => (
+              <button
+                className={day.id === props.selectedDayId ? "active" : ""}
+                key={day.id}
+                type="button"
+                onClick={() => props.onSelectDay(day.id)}
+              >
+                <strong>Day {day.dayNumber}</strong>
+                <span>{mobileDayLabel(day)}</span>
+                <em>{itemCountByDay.get(day.id) ?? 0}개</em>
+              </button>
+            ))}
+          </nav>
+
+          <div
+            className="planner-sections"
+            onScroll={clearDetailHighlight}
+            onTouchStart={clearDetailHighlight}
+            onWheel={clearDetailHighlight}
+          >
             <section className={props.scheduleCollapsed ? "sidebar-section schedule-section collapsed" : "sidebar-section schedule-section"}>
               <button
                 className="section-toggle"
@@ -2116,12 +2318,22 @@ function EditorScreen(props: {
                     ))}
                   </div>
 
-                  <ItemForm
-                    form={props.itemForm}
-                    editing={Boolean(props.editingItemId)}
-                    onChange={props.onItemFormChange}
-                    onSubmit={props.onSubmitItem}
-                  />
+                  {!props.editingItemId && !isAddingItem ? (
+                    <button className="section-add-button" type="button" onClick={startAddItem}>
+                      <Plus size={15} />
+                      일정 추가
+                    </button>
+                  ) : null}
+                  {props.editingItemId || isAddingItem ? (
+                    <ItemForm
+                      form={props.itemForm}
+                      page
+                      mode={props.editingItemId ? "edit" : "create"}
+                      onChange={props.onItemFormChange}
+                      onSubmit={submitItemForm}
+                      onCancel={cancelItemForm}
+                    />
+                  ) : null}
 
                   <div className="node-list">
                     {props.dayItems.length === 0 ? (
@@ -2140,12 +2352,14 @@ function EditorScreen(props: {
                       return (
                         <article
                           className={[
-                            item.id === props.focusedItemId ? "plan-node focused" : "plan-node",
+                            "plan-node",
                             isMappable ? "" : "memo-node",
-                            expanded ? "expanded" : ""
+                            expanded ? "expanded" : "",
+                            detailHighlight?.type === "item" && detailHighlight.id === item.id ? "detail-highlight" : ""
                           ]
                             .filter(Boolean)
                             .join(" ")}
+                          data-detail-item-id={item.id}
                           key={item.id}
                         >
                           <button
@@ -2153,7 +2367,7 @@ function EditorScreen(props: {
                             type="button"
                             aria-label={isMappable ? `${item.title} 지도에서 보기` : `${item.title} 메모 노드`}
                             disabled={!isMappable}
-                            onClick={() => props.onFocusItem(item.id)}
+                            onClick={() => focusItemOnMap(item.id)}
                           >
                             {isMappable ? routeNumber : "메모"}
                           </button>
@@ -2163,7 +2377,7 @@ function EditorScreen(props: {
                               <span>{item.timeText || "시간 미정"}</span>
                             </div>
                             <div className={expanded ? "node-memo expanded" : "node-memo"}>
-                              {expandable && !expanded ? previewText : memoText}
+                              <MarkdownContent content={expandable && !expanded ? previewText : memoText} className="node-markdown" />
                             </div>
                             {expandable ? (
                               <button
@@ -2178,7 +2392,7 @@ function EditorScreen(props: {
                               </button>
                             ) : null}
                             <div className="node-actions">
-                              <button type="button" disabled={!isMappable} onClick={() => props.onFocusItem(item.id)}>
+                              <button type="button" disabled={!isMappable} onClick={() => focusItemOnMap(item.id)}>
                                 <Navigation size={14} />
                                 {isMappable ? "지도" : "좌표 없음"}
                               </button>
@@ -2232,6 +2446,21 @@ function EditorScreen(props: {
                       <span>장소를 추가하면 일정 노드로 바로 가져올 수 있습니다.</span>
                     </div>
                   ) : null}
+                  {!props.editingPlaceId && !isAddingPlace ? (
+                    <button className="section-add-button" type="button" onClick={startAddPlace}>
+                      <Plus size={15} />
+                      장소 추가
+                    </button>
+                  ) : null}
+                  {isAddingPlace ? (
+                    <PlaceForm
+                      form={props.placeForm}
+                      mode="create"
+                      onChange={props.onPlaceFormChange}
+                      onSubmit={submitPlaceForm}
+                      onCancel={cancelPlaceForm}
+                    />
+                  ) : null}
                   {visiblePlaces.map((place) => {
                     const localName = localizedPlaceName(place);
                     const detailText = placeDetailText(place);
@@ -2243,53 +2472,68 @@ function EditorScreen(props: {
                         className={[
                           "place-card",
                           expanded ? "expanded" : "",
+                          detailHighlight?.type === "place" && detailHighlight.id === place.id ? "detail-highlight" : "",
                           props.editingPlaceId === place.id ? "editing" : ""
                         ]
                           .filter(Boolean)
                           .join(" ")}
+                        data-detail-place-id={place.id}
                         key={place.id}
                       >
                         {props.editingPlaceId === place.id ? (
-                          <PlaceForm
-                            form={props.placeForm}
-                            onChange={props.onPlaceFormChange}
-                            onSubmit={props.onSubmitPlace}
-                            onCancel={props.onCancelEditPlace}
-                          />
+                            <PlaceForm
+                              form={props.placeForm}
+                              mode="edit"
+                              onChange={props.onPlaceFormChange}
+                              onSubmit={submitPlaceForm}
+                              onCancel={cancelPlaceForm}
+                            />
                         ) : (
                           <>
-                            <div className="place-card-main">
-                              <strong>{localName}</strong>
-                              {localName !== place.name ? <em>{place.name}</em> : null}
-                              <span className={expanded ? "place-detail expanded" : "place-detail"}>
-                                {expandable && !expanded ? previewText : detailText || "설명 없음"}
-                              </span>
-                              {expandable ? (
-                                <button
-                                  className="memo-toggle place-toggle"
-                                  type="button"
-                                  aria-expanded={expanded}
-                                  onClick={() => toggleExpandedPlace(place.id)}
-                                >
-                                  <span>{expanded ? "접기" : "전체 보기"}</span>
-                                  <em>{expanded ? "요약" : placeDetailCountLabel(detailText)}</em>
-                                  {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                                </button>
-                              ) : null}
+                            <div className="node-sequence place-marker" aria-hidden="true">
+                              <MapPinned size={14} />
                             </div>
-                            <div className="place-actions">
-                              <button type="button" onClick={() => props.onUsePlace(place)}>
-                                <Plus size={14} />
-                                일정
-                              </button>
-                              <button type="button" onClick={() => props.onEditPlace(place)}>
-                                <Edit3 size={14} />
-                                수정
-                              </button>
-                              <button className="danger-action" type="button" onClick={() => props.onDeletePlace(place)}>
-                                <Trash2 size={14} />
-                                삭제
-                              </button>
+                            <div className="node-content">
+                              <div className="place-card-main">
+                                <strong>{localName}</strong>
+                                {localName !== place.name ? <em>{place.name}</em> : null}
+                                <div className={expanded ? "place-detail expanded" : "place-detail"}>
+                                  <MarkdownContent
+                                    content={expandable && !expanded ? previewText : detailText || "설명 없음"}
+                                    className="node-markdown"
+                                  />
+                                </div>
+                                {expandable ? (
+                                  <button
+                                    className="memo-toggle place-toggle"
+                                    type="button"
+                                    aria-expanded={expanded}
+                                    onClick={() => toggleExpandedPlace(place.id)}
+                                  >
+                                    <span>{expanded ? "접기" : "전체 보기"}</span>
+                                    <em>{expanded ? "요약" : placeDetailCountLabel(detailText)}</em>
+                                    {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                                  </button>
+                                ) : null}
+                              </div>
+                              <div className="place-actions">
+                                <button type="button" disabled={!hasCoordinates(place)} onClick={() => focusPlaceOnMap(place)}>
+                                  <Navigation size={14} />
+                                  {hasCoordinates(place) ? "지도" : "좌표 없음"}
+                                </button>
+                                <button type="button" onClick={() => props.onUsePlace(place)}>
+                                  <Plus size={14} />
+                                  일정
+                                </button>
+                                <button type="button" onClick={() => props.onEditPlace(place)}>
+                                  <Edit3 size={14} />
+                                  수정
+                                </button>
+                                <button className="danger-action" type="button" onClick={() => props.onDeletePlace(place)}>
+                                  <Trash2 size={14} />
+                                  삭제
+                                </button>
+                              </div>
                             </div>
                           </>
                         )}
@@ -2318,12 +2562,29 @@ function EditorScreen(props: {
       ) : null}
 
       <section className="map-zone">
+        <nav className="map-day-picker" aria-label="지도 날짜 선택">
+          {props.tripState.days.map((day) => (
+            <button
+              className={day.id === props.selectedDayId ? "active" : ""}
+              key={day.id}
+              type="button"
+              onClick={() => props.onSelectDay(day.id)}
+            >
+              <strong>Day {day.dayNumber}</strong>
+              <i aria-hidden="true">·</i>
+              <span>{itemCountByDay.get(day.id) ?? 0}일정</span>
+            </button>
+          ))}
+        </nav>
         <MapCanvas
           tripState={props.tripState}
           dayItems={props.dayItems}
           selectedDay={props.selectedDay}
           focusedItemId={props.focusedItemId}
-          layoutKey={`${props.plannerCollapsed}-${props.chatCollapsed}-${props.layout.plannerWidth}-${props.layout.chatWidth}-${props.layout.placesHeight}`}
+          focusedPlaceId={focusedMapPlaceId}
+          onShowItemDetails={showItemDetails}
+          onShowPlaceDetails={showPlaceDetails}
+          layoutKey={`${mobileView}-${props.plannerCollapsed}-${props.chatCollapsed}-${props.layout.plannerWidth}-${props.layout.chatWidth}-${props.layout.placesHeight}`}
         />
       </section>
 
@@ -2343,7 +2604,7 @@ function EditorScreen(props: {
             <div className="chat-header-main">
               <button className="text-back-button compact mobile-planner-entry" type="button" onClick={closeMobileChat}>
                 <ChevronLeft size={16} />
-                여행
+                지도
               </button>
               <div className="chat-heading">
                 {props.activeChatId ? (
@@ -2407,7 +2668,13 @@ function EditorScreen(props: {
                 ) : null}
               </div>
               <div className="chat-log-frame">
-                <div className="chat-log" ref={chatLogRef} onScroll={handleChatLogScroll}>
+                <div
+                  className="chat-log"
+                  ref={chatLogRef}
+                  onScroll={handleChatLogScroll}
+                  onTouchStart={pauseChatAutoScroll}
+                  onWheel={pauseChatAutoScroll}
+                >
                   {props.messages.length === 0 ? (
                     <div className="assistant-message">
                       <p>전체 일정 조정, 날짜별 권역 변경, 장소 추가 요청을 이곳에서 이어갈 수 있습니다.</p>
@@ -2462,7 +2729,7 @@ function EditorScreen(props: {
                   value={props.chatText}
                   onChange={(event) => props.onChatTextChange(event.target.value)}
                   onKeyDown={(event) => submitOnCommandEnter(event)}
-                  placeholder={`Enter 전송, Shift/${lineBreakModifier}+Enter 줄바꿈`}
+                  placeholder={isMobileInput ? "메시지를 입력하세요. 줄바꿈은 Return, 전송은 버튼" : `Enter 전송, Shift/${lineBreakModifier}+Enter 줄바꿈`}
                   rows={3}
                 />
                 {props.isChatSending ? (
@@ -2496,6 +2763,20 @@ function EditorScreen(props: {
           <PanelRightOpen size={18} />
         </button>
       )}
+      <nav className="mobile-bottom-nav" aria-label="모바일 화면 전환">
+        <button className={mobileView === "details" ? "active" : ""} type="button" onClick={openMobileDetails}>
+          <CalendarDays size={17} />
+          <span>상세</span>
+        </button>
+        <button className={mobileView === "map" ? "active" : ""} type="button" onClick={openMobileMap}>
+          <MapPinned size={17} />
+          <span>지도</span>
+        </button>
+        <button className={mobileView === "chat" ? "active" : ""} type="button" onClick={openMobileChatList}>
+          <Bot size={17} />
+          <span>대화</span>
+        </button>
+      </nav>
     </main>
   );
 }
@@ -2578,9 +2859,9 @@ function OperationPreviewList(props: { items: string[]; status?: string | null; 
   );
 }
 
-function MarkdownContent(props: { content: string }) {
+function MarkdownContent(props: { content: string; className?: string }) {
   return (
-    <div className="message-content">
+    <div className={["message-content", props.className].filter(Boolean).join(" ")}>
       <ReactMarkdown remarkPlugins={markdownPlugins}>{normalizeMarkdownForRender(props.content)}</ReactMarkdown>
     </div>
   );
@@ -2803,7 +3084,11 @@ function TripMetaForm(props: {
           <strong>{props.form.title || "여행 이름 미정"}</strong>
           <span>{[props.form.destinationName || "목적지 미정", dateText].join(" · ")}</span>
         </div>
-        <button className="secondary-button small-action" type="button" onClick={() => setOpen((value) => !value)}>
+        <button
+          className={open ? "secondary-button small-action active" : "secondary-button small-action"}
+          type="button"
+          onClick={() => setOpen((value) => !value)}
+        >
           <Edit3 size={14} />
           정보
         </button>
@@ -2846,9 +3131,11 @@ function TripMetaForm(props: {
 
 function ItemForm(props: {
   form: UpsertItineraryItemRequest;
-  editing: boolean;
+  page: boolean;
+  mode: "create" | "edit";
   onChange: (form: UpsertItineraryItemRequest) => void;
   onSubmit: (event: FormEvent) => void;
+  onCancel: () => void;
 }) {
   const setField = (field: keyof UpsertItineraryItemRequest, value: string) => {
     props.onChange({ ...props.form, [field]: value });
@@ -2856,9 +3143,21 @@ function ItemForm(props: {
   const setNumberField = (field: "lat" | "lng", value: string) => {
     props.onChange({ ...props.form, [field]: value ? Number(value) : undefined });
   };
+  const editing = props.mode === "edit";
 
   return (
-    <form className="item-form" onSubmit={props.onSubmit}>
+    <form className={props.page ? "item-form editing" : "item-form"} onSubmit={props.onSubmit}>
+      {props.page ? (
+        <div className="edit-page-header">
+          <div>
+            <strong>{editing ? "일정 수정" : "일정 추가"}</strong>
+            <span>{editing ? "시간, 설명, 위치 정보를 조정합니다" : "선택한 날짜에 새 일정을 추가합니다"}</span>
+          </div>
+          <button type="button" aria-label={editing ? "일정 수정 닫기" : "일정 추가 닫기"} onClick={props.onCancel}>
+            <X size={16} />
+          </button>
+        </div>
+      ) : null}
       <div className="form-grid">
         <input
           value={props.form.timeText ?? ""}
@@ -2889,15 +3188,23 @@ function ItemForm(props: {
           placeholder="경도"
         />
       </div>
-      <button className="primary-button" type="submit">
-        {props.editing ? "일정 수정" : "일정 추가"}
-      </button>
+      <div className={props.page ? "form-actions compact edit-actions" : "form-actions compact"}>
+        <button className="primary-button" type="submit">
+          {editing ? "수정 저장" : "일정 추가"}
+        </button>
+        {props.page ? (
+          <button type="button" onClick={props.onCancel}>
+            취소
+          </button>
+        ) : null}
+      </div>
     </form>
   );
 }
 
 function PlaceForm(props: {
   form: UpsertPlaceRequest;
+  mode: "create" | "edit";
   onChange: (form: UpsertPlaceRequest) => void;
   onSubmit: (event: FormEvent) => void;
   onCancel: () => void;
@@ -2908,9 +3215,19 @@ function PlaceForm(props: {
   const setNumberField = (field: "lat" | "lng", value: string) => {
     props.onChange({ ...props.form, [field]: value ? Number(value) : undefined });
   };
+  const editing = props.mode === "edit";
 
   return (
-    <form className="item-form place-form" onSubmit={props.onSubmit}>
+    <form className="item-form place-form editing" onSubmit={props.onSubmit}>
+      <div className="edit-page-header">
+        <div>
+          <strong>{editing ? "장소 수정" : "장소 추가"}</strong>
+          <span>{editing ? "장소 설명, 주소, 좌표를 조정합니다" : "조사 장소 목록에 새 후보를 추가합니다"}</span>
+        </div>
+        <button type="button" aria-label={editing ? "장소 수정 닫기" : "장소 추가 닫기"} onClick={props.onCancel}>
+          <X size={16} />
+        </button>
+      </div>
       <input value={props.form.name} onChange={(event) => setField("name", event.target.value)} placeholder="장소 이름" />
       <div className="form-grid">
         <input
@@ -2939,9 +3256,9 @@ function PlaceForm(props: {
           placeholder="경도"
         />
       </div>
-      <div className="form-actions compact">
+      <div className="form-actions compact edit-actions">
         <button className="primary-button" type="submit">
-          장소 수정
+          {editing ? "수정 저장" : "장소 추가"}
         </button>
         <button type="button" onClick={props.onCancel}>
           취소
@@ -2956,6 +3273,9 @@ function MapCanvas(props: {
   selectedDay?: TripDay;
   dayItems: ItineraryItem[];
   focusedItemId: string | null;
+  focusedPlaceId: string | null;
+  onShowItemDetails: (itemId: string) => void;
+  onShowPlaceDetails: (placeId: string) => void;
   layoutKey: string;
 }) {
   const elementRef = useRef<HTMLDivElement | null>(null);
@@ -2963,13 +3283,17 @@ function MapCanvas(props: {
   const layerRef = useRef<L.LayerGroup | null>(null);
   const tileLayerRef = useRef<L.TileLayer | null>(null);
   const skipNextAutoFitRef = useRef(false);
+  const hasPersistedMapViewRef = useRef(false);
+  const openPopupItemIdRef = useRef<string | null>(null);
+  const openPopupPlaceIdRef = useRef<string | null>(null);
   const [tileMode, setTileMode] = useState<MapTileMode>(() => readMapTileMode());
   const [showCoordinateNote, setShowCoordinateNote] = useState(true);
 
   useEffect(() => {
     if (!elementRef.current || mapRef.current) return;
-    const restoredView = readMapViewFromHash(props.tripState.trip.id);
+    const restoredView = readMapViewFromHash(props.tripState.trip.id) ?? readMapViewFromStorage(props.tripState.trip.id);
     skipNextAutoFitRef.current = Boolean(restoredView);
+    hasPersistedMapViewRef.current = Boolean(restoredView);
 
     const map = L.map(elementRef.current, {
       attributionControl: true,
@@ -2980,7 +3304,10 @@ function MapCanvas(props: {
 
     layerRef.current = L.layerGroup().addTo(map);
     mapRef.current = map;
-    const persistMapView = () => writeMapViewToHash(map, props.tripState.trip.id);
+    const persistMapView = () => {
+      hasPersistedMapViewRef.current = true;
+      writeMapView(map, props.tripState.trip.id);
+    };
     map.on("moveend zoomend", persistMapView);
 
     return () => {
@@ -3050,21 +3377,43 @@ function MapCanvas(props: {
         .filter(hasCoordinates)
         .map((item) => `${item.lat?.toFixed(6)},${item.lng?.toFixed(6)}`)
     );
+    const popupActions: MapPopupActions = {
+      onShowItemDetails: (itemId) => {
+        props.onShowItemDetails(itemId);
+      },
+      onShowPlaceDetails: (placeId) => {
+        props.onShowPlaceDetails(placeId);
+      }
+    };
 
     dedupePlaces(props.tripState.places).filter(hasCoordinates).forEach((place) => {
       const coordinateKey = `${place.lat?.toFixed(6)},${place.lng?.toFixed(6)}`;
-      if (itemCoordinates.has(coordinateKey)) return;
+      const isFocusedPlace = place.id === props.focusedPlaceId;
+      const shouldKeepOpenPlace = place.id === openPopupPlaceIdRef.current;
+      if (itemCoordinates.has(coordinateKey) && !isFocusedPlace && !shouldKeepOpenPlace) return;
 
       const point: L.LatLngExpression = [place.lat, place.lng];
       allPoints.push(point);
       const marker = L.circleMarker(point, {
-        radius: 7,
+        radius: isFocusedPlace ? 9 : 7,
         color: "#ffffff",
-        weight: 2,
-        fillColor: "#6b7280",
-        fillOpacity: 0.78
+        weight: isFocusedPlace ? 3 : 2,
+        fillColor: isFocusedPlace ? "#8b5cf6" : "#6b7280",
+        fillOpacity: isFocusedPlace ? 0.95 : 0.78
       }).addTo(layer);
-      marker.bindPopup(placePopupElement(place, itineraryUsagesForPlace(place, props.tripState, selectedDayId)));
+      marker.bindPopup(
+        placePopupElement(place, itineraryUsagesForPlace(place, props.tripState, selectedDayId), {
+          onShowItemDetails: popupActions.onShowItemDetails,
+          onShowPlaceDetails: popupActions.onShowPlaceDetails
+        })
+      );
+      if (isFocusedPlace) {
+        openPopupPlaceIdRef.current = place.id;
+        marker.openPopup();
+        focusMapPoint(map, point, Math.max(map.getZoom(), 14));
+      } else if (shouldKeepOpenPlace) {
+        marker.openPopup();
+      }
     });
 
     props.dayItems.filter(hasCoordinates).forEach((item, index) => {
@@ -3081,10 +3430,19 @@ function MapCanvas(props: {
         }),
         zIndexOffset: item.id === props.focusedItemId ? 1000 : index
       }).addTo(layer);
-      marker.bindPopup(planPopupElement(item, itineraryUsagesAtCoordinate(props.tripState, item.lat, item.lng, selectedDayId)));
+      marker.bindPopup(
+        planPopupElement(item, itineraryUsagesAtCoordinate(props.tripState, item.lat, item.lng, selectedDayId), {
+          onShowItemDetails: popupActions.onShowItemDetails,
+          onShowPlaceDetails: popupActions.onShowPlaceDetails
+        })
+      );
       if (item.id === props.focusedItemId) {
+        openPopupItemIdRef.current = item.id;
+        openPopupPlaceIdRef.current = null;
         marker.openPopup();
-        map.setView(point, Math.max(map.getZoom(), 14), { animate: true });
+        focusMapPoint(map, point, Math.max(map.getZoom(), 14));
+      } else if (item.id === openPopupItemIdRef.current) {
+        marker.openPopup();
       }
     });
 
@@ -3099,7 +3457,7 @@ function MapCanvas(props: {
     }
 
     if (!props.focusedItemId) {
-      if (skipNextAutoFitRef.current) {
+      if (skipNextAutoFitRef.current || hasPersistedMapViewRef.current) {
         skipNextAutoFitRef.current = false;
       } else if (dayPoints.length > 0) {
         map.fitBounds(L.latLngBounds(dayPoints), { padding: [48, 48], maxZoom: 14 });
@@ -3111,7 +3469,7 @@ function MapCanvas(props: {
     }
 
     window.setTimeout(() => map.invalidateSize(), 0);
-  }, [props.dayItems, props.focusedItemId, props.selectedDay?.id, props.tripState]);
+  }, [props.dayItems, props.focusedItemId, props.focusedPlaceId, props.selectedDay?.id, props.tripState]);
 
   return (
     <div className="map-canvas">
@@ -3167,6 +3525,15 @@ function formatDateRange(trip: Trip): string {
   if (trip.startDate && trip.endDate) return `${trip.startDate} - ${trip.endDate}`;
   if (trip.startDate) return trip.startDate;
   return "";
+}
+
+function mobileDayLabel(day: TripDay): string {
+  if (!day.dateText) return day.weekday || "날짜 미정";
+  const date = parseIsoDate(day.dateText);
+  const monthDay = Number.isNaN(date.getTime())
+    ? day.dateText.slice(5) || day.dateText
+    : new Intl.DateTimeFormat("ko-KR", { month: "numeric", day: "numeric" }).format(date);
+  return [monthDay, day.weekday].filter(Boolean).join(" ");
 }
 
 function formatDateTime(value: string): string {
@@ -3512,6 +3879,10 @@ function isWindowsUserAgent(): boolean {
   return typeof navigator !== "undefined" && /Windows/i.test(navigator.userAgent);
 }
 
+function isMobileUserAgent(): boolean {
+  return typeof navigator !== "undefined" && /iPhone|iPad|iPod|Android|Mobile/i.test(navigator.userAgent);
+}
+
 async function writeClipboardText(text: string): Promise<void> {
   if (navigator.clipboard?.writeText) {
     await navigator.clipboard.writeText(text);
@@ -3529,7 +3900,19 @@ async function writeClipboardText(text: string): Promise<void> {
   textarea.remove();
 }
 
+function scrollDetailNodeIntoView(selector: string) {
+  window.setTimeout(() => {
+    const element = document.querySelector<HTMLElement>(selector);
+    element?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, 80);
+}
+
+function cssEscapeValue(value: string): string {
+  return typeof CSS !== "undefined" && typeof CSS.escape === "function" ? CSS.escape(value) : value.replace(/["\\]/g, "\\$&");
+}
+
 function submitOnCommandEnter(event: KeyboardEvent<HTMLTextAreaElement>) {
+  if (isMobileUserAgent()) return;
   if (event.key === "Enter" && !event.shiftKey && !event.altKey && !event.nativeEvent.isComposing) {
     event.preventDefault();
     event.currentTarget.form?.requestSubmit();
@@ -3652,6 +4035,25 @@ function createMapTileLayer(mode: MapTileMode): L.TileLayer {
   });
 }
 
+function focusMapPoint(map: L.Map, point: L.LatLngExpression, zoom: number) {
+  map.setView(point, zoom, { animate: true });
+
+  window.setTimeout(() => {
+    map.setView(point, zoom, { animate: false });
+    const size = map.getSize();
+    const topOverlay = isMobileUserAgent() ? 136 : 0;
+    const bottomOverlay = isMobileUserAgent() ? 104 : 0;
+    const centerPoint = map.latLngToContainerPoint(L.latLng(point));
+    const targetX = Math.round(size.x / 2);
+    const targetY = Math.round((topOverlay + (size.y - bottomOverlay)) / 2);
+    const correctionX = centerPoint.x - targetX;
+    const correctionY = centerPoint.y - targetY;
+    if (Math.abs(correctionX) > 8 || Math.abs(correctionY) > 8) {
+      map.panBy([correctionX, correctionY], { animate: true });
+    }
+  }, 280);
+}
+
 function localizedPlaceName(place: Place): string {
   if (containsHangul(place.name)) return place.name;
   return placeNameKo[normalizePlaceKey(place.name)] ?? place.name;
@@ -3763,6 +4165,7 @@ type ItineraryMapUsage = {
 
 function itineraryUsagesForPlace(place: Place, tripState: TripState, selectedDayId: string): ItineraryMapUsage[] {
   return itineraryUsages(tripState, selectedDayId).filter((usage) => {
+    if (!usage.selected) return false;
     if (usage.item.placeId && usage.item.placeId === place.id) return true;
     if (hasCoordinates(place) && hasCoordinates(usage.item) && sameMapCoordinate(place, usage.item)) return true;
     return normalizePlaceKey(usage.item.title) === normalizePlaceKey(place.name);
@@ -3776,6 +4179,7 @@ function itineraryUsagesAtCoordinate(
   selectedDayId: string
 ): ItineraryMapUsage[] {
   return itineraryUsages(tripState, selectedDayId).filter((usage) => {
+    if (!usage.selected) return false;
     if (!hasCoordinates(usage.item)) return false;
     return sameMapCoordinate({ lat, lng }, usage.item);
   });
@@ -3825,35 +4229,58 @@ function sameMapCoordinate(
   return Math.abs(left.lat - right.lat) < 0.00005 && Math.abs(left.lng - right.lng) < 0.00005;
 }
 
-function placePopupElement(place: Place, usages: ItineraryMapUsage[]): HTMLElement {
+type MapPopupActions = {
+  onShowItemDetails: (itemId: string) => void;
+  onShowPlaceDetails: (placeId: string) => void;
+};
+
+function placePopupElement(place: Place, usages: ItineraryMapUsage[], actions: MapPopupActions): HTMLElement {
   const rows: MapPopupRow[] = [
     {
-      tag: "조사",
       title: localizedPlaceName(place),
-      meta: placeSummary(place) || "조사 장소"
+      meta: placeSummary(place) || "조사 장소",
+      detail: placeDetailText(place) || placeSummary(place) || "설명 없음",
+      hideHeader: true,
+      action: {
+        label: "상세보기",
+        onClick: () => actions.onShowPlaceDetails(place.id)
+      }
     },
-    ...usages.map(usageToPopupRow)
+    ...usages.map((usage) => usageToPopupRow(usage, actions))
   ];
   return richMapPopupElement(`📍 ${localizedPlaceName(place)}`, rows);
 }
 
-function planPopupElement(item: ItineraryItem, usages: ItineraryMapUsage[]): HTMLElement {
-  const rows = usages.length ? usages.map(usageToPopupRow) : [usageToPopupRow({ item, day: null, sequence: null, selected: true })];
+function planPopupElement(item: ItineraryItem, usages: ItineraryMapUsage[], actions: MapPopupActions): HTMLElement {
+  const rows = usages.length
+    ? usages.map((usage) => usageToPopupRow(usage, actions))
+    : [usageToPopupRow({ item, day: null, sequence: null, selected: true }, actions)];
   const sameTitle = rows.every((row) => normalizePlaceKey(row.title) === normalizePlaceKey(item.title));
   return richMapPopupElement(`📅 ${sameTitle ? item.title : `${rows.length}개 일정`}`, rows);
 }
 
 type MapPopupRow = {
-  tag: string;
   title: string;
   meta: string;
+  detail: string;
+  hideHeader?: boolean;
+  action?: {
+    label: string;
+    onClick: () => void;
+  };
 };
 
-function usageToPopupRow(usage: ItineraryMapUsage): MapPopupRow {
+function usageToPopupRow(usage: ItineraryMapUsage, actions: MapPopupActions): MapPopupRow {
+  const item = usage.item;
+  const dayLabel = usage.day ? `Day ${usage.day.dayNumber}` : "일정";
   return {
-    tag: usage.selected && usage.sequence ? `${usage.sequence}번째` : usage.day ? `Day ${usage.day.dayNumber}` : "일정",
-    title: usage.item.title,
-    meta: [usage.item.timeText, usage.item.category].filter(Boolean).join(" · ") || "일정"
+    title: item.title,
+    meta: [dayLabel, item.timeText, categoryLabel(item.category)].filter(Boolean).join(" · "),
+    detail: itineraryMemoText(item) || item.category || "설명 없음",
+    action: {
+      label: "상세보기",
+      onClick: () => actions.onShowItemDetails(item.id)
+    }
   };
 }
 
@@ -3872,17 +4299,28 @@ function richMapPopupElement(title: string, rows: MapPopupRow[]): HTMLElement {
     const rowElement = document.createElement("div");
     rowElement.className = "map-popup-row";
 
-    const tag = document.createElement("span");
-    tag.className = "map-popup-tag";
-    tag.textContent = row.tag;
-
     const body = document.createElement("div");
     const rowTitle = document.createElement("strong");
     rowTitle.textContent = row.title;
     const meta = document.createElement("span");
     meta.textContent = row.meta;
-    body.append(rowTitle, meta);
-    rowElement.append(tag, body);
+    const detail = document.createElement("div");
+    detail.className = "map-popup-detail";
+    createRoot(detail).render(<MarkdownContent content={row.detail || "설명 없음"} className="map-popup-markdown" />);
+    if (row.hideHeader) {
+      body.append(detail);
+    } else {
+      body.append(rowTitle, meta, detail);
+    }
+    if (row.action) {
+      const actionButton = document.createElement("button");
+      actionButton.className = "map-popup-action";
+      actionButton.type = "button";
+      actionButton.textContent = row.action.label;
+      actionButton.addEventListener("click", row.action.onClick);
+      body.appendChild(actionButton);
+    }
+    rowElement.append(body);
     list.appendChild(rowElement);
   });
   element.appendChild(list);
@@ -3917,10 +4355,66 @@ function readMapViewFromHash(tripId: string): MapView | null {
   };
 }
 
+function readMapViewFromStorage(tripId: string): MapView | null {
+  try {
+    const raw = window.localStorage.getItem(mapViewStorageKey(tripId));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { lat?: unknown; lng?: unknown; zoom?: unknown };
+    const lat = Number(parsed.lat);
+    const lng = Number(parsed.lng);
+    const zoom = Number(parsed.zoom);
+    if (![lat, lng, zoom].every(Number.isFinite)) return null;
+    return {
+      center: [lat, lng],
+      zoom: Math.min(Math.max(Math.round(zoom), 2), 19)
+    };
+  } catch {
+    return null;
+  }
+}
+
+function writeMapView(map: L.Map, tripId: string) {
+  writeMapViewToStorage(map, tripId);
+  writeMapViewToHash(map, tripId);
+}
+
+function writeMapViewToStorage(map: L.Map, tripId: string) {
+  const center = map.getCenter();
+  try {
+    window.localStorage.setItem(
+      mapViewStorageKey(tripId),
+      JSON.stringify({
+        lat: Number(center.lat.toFixed(5)),
+        lng: Number(center.lng.toFixed(5)),
+        zoom: map.getZoom()
+      })
+    );
+  } catch {
+    // Local storage can be unavailable in private or restricted browser contexts.
+  }
+}
+
 function writeMapViewToHash(map: L.Map, tripId: string) {
   const center = map.getCenter();
   const hash = `#map=${encodeURIComponent(tripId)},${center.lat.toFixed(5)},${center.lng.toFixed(5)},${map.getZoom()}`;
   const nextUrl = `${window.location.pathname}${window.location.search}${hash}`;
+  window.history.replaceState(window.history.state, "", nextUrl);
+}
+
+function mapViewStorageKey(tripId: string): string {
+  return `${mapViewStoragePrefix}:${tripId}`;
+}
+
+function readMobileViewFromUrl(): MobileEditorView | null {
+  const tab = new URLSearchParams(window.location.search).get("tab");
+  return tab === "details" || tab === "map" || tab === "chat" ? tab : null;
+}
+
+function writeMobileViewToUrl(view: MobileEditorView) {
+  const search = new URLSearchParams(window.location.search);
+  search.set("tab", view);
+  const query = search.toString();
+  const nextUrl = `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`;
   window.history.replaceState(window.history.state, "", nextUrl);
 }
 

@@ -77,6 +77,13 @@ class TripController(
         @RequestBody request: UpsertPlaceRequest,
     ): PlaceDto = service.updatePlace(placeId, request)
 
+    @PostMapping("/api/trips/{tripId}/places")
+    @ResponseStatus(HttpStatus.CREATED)
+    fun addPlace(
+        @PathVariable tripId: String,
+        @RequestBody request: UpsertPlaceRequest,
+    ): PlaceDto = service.addPlace(tripId, request)
+
     @DeleteMapping("/api/places/{placeId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     fun deletePlace(@PathVariable placeId: String) {

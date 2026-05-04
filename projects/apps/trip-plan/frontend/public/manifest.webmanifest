@@ -1,0 +1,19 @@
+{
+  "name": "AI 여행 플래너",
+  "short_name": "여행 플래너",
+  "description": "여행 일정, 조사 장소, 지도와 AI 대화를 한 화면에서 관리합니다.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f5f6f8",
+  "theme_color": "#f5f6f8",
+  "icons": [
+    {
+      "src": "/app-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
