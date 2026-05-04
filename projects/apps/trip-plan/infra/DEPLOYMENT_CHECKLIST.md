@@ -21,38 +21,38 @@ kubectl get ingressclass tailscale
 - [ ] Build the app image:
 
 ```bash
-docker build -t registry.internal/trip-plan/app:0.1.0 .
+docker buildx build --platform linux/amd64 -t registry.wukong.monster/dev/trip-plan/app:0.1.0 --push .
 ```
 
 - [ ] Push the app image:
 
 ```bash
-docker push registry.internal/trip-plan/app:0.1.0
+docker buildx imagetools inspect registry.wukong.monster/dev/trip-plan/app:0.1.0
 ```
 
 - [ ] Build or prepare a Codex app-server image at:
 
 ```bash
-docker build -f Dockerfile.codex -t registry.internal/trip-plan/codex-app-server:0.1.0 .
+docker buildx build --platform linux/amd64 -f Dockerfile.codex -t registry.wukong.monster/dev/trip-plan/codex-app-server:0.1.0 --push .
 ```
 
 - [ ] Confirm the Codex image includes CA certificates. Device auth can fail without them.
 
 ```bash
-docker run --rm registry.internal/trip-plan/codex-app-server:0.1.0 \
+docker run --rm registry.wukong.monster/dev/trip-plan/codex-app-server:0.1.0 \
   ls -l /etc/ssl/certs/ca-certificates.crt
 ```
 
 - [ ] Push the Codex app-server image:
 
 ```bash
-docker push registry.internal/trip-plan/codex-app-server:0.1.0
+docker buildx imagetools inspect registry.wukong.monster/dev/trip-plan/codex-app-server:0.1.0
 ```
 
 - [ ] Confirm the Codex image can run:
 
 ```bash
-docker run --rm -p 127.0.0.1:8765:8765 registry.internal/trip-plan/codex-app-server:0.1.0
+docker run --rm -p 127.0.0.1:8765:8765 registry.wukong.monster/dev/trip-plan/codex-app-server:0.1.0
 curl -fsS http://127.0.0.1:8765/healthz
 ```
 
@@ -64,7 +64,7 @@ docker run --rm -d \
   --name trip-plan-codex \
   -p 127.0.0.1:8765:8765 \
   -v "$HOME/ai-chat/.codex:/ai-chat/.codex" \
-  registry.internal/trip-plan/codex-app-server:0.1.0
+  registry.wukong.monster/dev/trip-plan/codex-app-server:0.1.0
 docker exec -it trip-plan-codex codex login
 docker restart trip-plan-codex
 docker exec -it trip-plan-codex codex login status

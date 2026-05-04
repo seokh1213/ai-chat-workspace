@@ -20,18 +20,16 @@ The Tailscale operator setup needs OAuth credentials and tailnet policy tags. Ke
 Build and push these images to the internal registry before syncing:
 
 ```bash
-docker build -t registry.internal/trip-plan/app:0.1.0 .
-docker push registry.internal/trip-plan/app:0.1.0
+docker buildx build --platform linux/amd64 -t registry.wukong.monster/dev/trip-plan/app:0.1.0 --push .
 ```
 
 Build and push the Codex app-server image:
 
 ```bash
-docker build -f Dockerfile.codex -t registry.internal/trip-plan/codex-app-server:0.1.0 .
-docker push registry.internal/trip-plan/codex-app-server:0.1.0
+docker buildx build --platform linux/amd64 -f Dockerfile.codex -t registry.wukong.monster/dev/trip-plan/codex-app-server:0.1.0 --push .
 ```
 
-`registry.internal/trip-plan/codex-app-server:0.1.0` must be able to run:
+`registry.wukong.monster/dev/trip-plan/codex-app-server:0.1.0` must be able to run:
 
 ```bash
 codex app-server --listen ws://0.0.0.0:8765
@@ -64,7 +62,7 @@ docker run --rm -it \
   --name trip-plan-codex \
   -p 127.0.0.1:8765:8765 \
   -v "$HOME/ai-chat/.codex:/ai-chat/.codex" \
-  registry.internal/trip-plan/codex-app-server:0.1.0
+  registry.wukong.monster/dev/trip-plan/codex-app-server:0.1.0
 ```
 
 If the image was built from `Dockerfile.codex`, it includes `ca-certificates`. Without CA certificates, `codex login` device auth can fail while requesting the OpenAI device code.

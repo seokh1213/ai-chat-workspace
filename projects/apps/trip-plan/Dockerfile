@@ -15,7 +15,7 @@ COPY --chown=gradle:gradle backend backend
 COPY --chown=gradle:gradle frontend frontend
 COPY --from=frontend-build --chown=gradle:gradle /workspace/frontend/node_modules frontend/node_modules
 COPY --from=frontend-build --chown=gradle:gradle /workspace/frontend/dist frontend/dist
-RUN ./gradlew :backend:bootJar --no-daemon
+RUN ./gradlew :backend:bootJar --no-daemon -x :backend:frontendInstall -x :backend:frontendBuild
 
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app

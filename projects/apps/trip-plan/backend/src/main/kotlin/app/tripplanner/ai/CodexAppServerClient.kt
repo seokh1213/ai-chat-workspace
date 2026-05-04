@@ -60,7 +60,17 @@ class CodexAppServerClient(
 
             val threadId = request.providerSession?.externalThreadId
                 ?.let { threadId ->
-                    rpc.resumeThread(threadId = threadId, request = request, developerInstructions = developerInstructions)
+                    runCatching {
+                        rpc.resumeThread(threadId = threadId, request = request, developerInstructions = developerInstructions)
+                    }.recoverCatching { error ->
+                        if (!error.isMissingCodexRollout()) throw error
+                        logger.warn(
+                            "Codex app-server could not resume stale thread {}; starting a new thread for runId={}",
+                            threadId,
+                            request.runId,
+                        )
+                        rpc.startThread(request = request, developerInstructions = developerInstructions)
+                    }.getOrThrow()
                 }
                 ?: rpc.startThread(request = request, developerInstructions = developerInstructions)
             activeThreadId = threadId
@@ -232,6 +242,9 @@ class CodexAppServerClient(
         )
         return result.path(Field.THREAD).codexTextField(Field.ID) ?: threadId
     }
+
+    private fun Throwable.isMissingCodexRollout(): Boolean =
+        message?.contains("no rollout found for thread id", ignoreCase = true) == true
 }
 
 private fun codexActivityFrom(method: String, message: JsonNode): AiProviderActivity? {
