@@ -138,7 +138,7 @@ https://trip-plan.<tailnet>.ts.net
 ## 7. Operational Follow-Ups
 
 - [ ] Move `infra/secret.yaml` to a real secret-management flow before production use.
-- [ ] Decide the final internal registry host and replace `registry.internal` placeholders if needed.
+- [x] Use Harbor image references under `registry.wukong.monster/dev/trip-plan/...`.
 - [ ] Add backup/restore for the PostgreSQL PVC.
 - [ ] Add backup/restore notes for the Codex auth PVC.
 - [ ] Consider switching PostgreSQL from in-cluster StatefulSet to a managed/internal DB if this becomes important data.
