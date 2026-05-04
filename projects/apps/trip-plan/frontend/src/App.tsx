@@ -2085,11 +2085,15 @@ function EditorScreen(props: {
   }
 
   function focusPlaceOnMap(place: Place) {
+    focusPlaceOnMapById(place.id);
+  }
+
+  function focusPlaceOnMapById(placeId: string) {
     if (focusClearTimerRef.current != null) {
       window.clearTimeout(focusClearTimerRef.current);
     }
     props.onFocusItem(null);
-    setFocusedMapPlaceId(place.id);
+    setFocusedMapPlaceId(placeId);
     setMobileView("map");
     focusClearTimerRef.current = window.setTimeout(() => {
       setFocusedMapPlaceId(null);
@@ -2582,6 +2586,7 @@ function EditorScreen(props: {
           selectedDay={props.selectedDay}
           focusedItemId={props.focusedItemId}
           focusedPlaceId={focusedMapPlaceId}
+          onFocusPlace={focusPlaceOnMapById}
           onShowItemDetails={showItemDetails}
           onShowPlaceDetails={showPlaceDetails}
           layoutKey={`${mobileView}-${props.plannerCollapsed}-${props.chatCollapsed}-${props.layout.plannerWidth}-${props.layout.chatWidth}-${props.layout.placesHeight}`}
@@ -3274,6 +3279,7 @@ function MapCanvas(props: {
   dayItems: ItineraryItem[];
   focusedItemId: string | null;
   focusedPlaceId: string | null;
+  onFocusPlace: (placeId: string) => void;
   onShowItemDetails: (itemId: string) => void;
   onShowPlaceDetails: (placeId: string) => void;
   layoutKey: string;
@@ -3286,6 +3292,7 @@ function MapCanvas(props: {
   const hasPersistedMapViewRef = useRef(false);
   const openPopupItemIdRef = useRef<string | null>(null);
   const openPopupPlaceIdRef = useRef<string | null>(null);
+  const rebuildingLayersRef = useRef(false);
   const [tileMode, setTileMode] = useState<MapTileMode>(() => readMapTileMode());
   const [showCoordinateNote, setShowCoordinateNote] = useState(true);
 
@@ -3367,6 +3374,7 @@ function MapCanvas(props: {
     const layer = layerRef.current;
     if (!map || !layer) return;
 
+    rebuildingLayersRef.current = true;
     layer.clearLayers();
 
     const dayPoints: L.LatLngExpression[] = [];
@@ -3407,6 +3415,16 @@ function MapCanvas(props: {
           onShowPlaceDetails: popupActions.onShowPlaceDetails
         })
       );
+      marker.on("click", () => {
+        openPopupItemIdRef.current = null;
+        openPopupPlaceIdRef.current = place.id;
+        props.onFocusPlace(place.id);
+      });
+      marker.on("popupclose", () => {
+        if (!rebuildingLayersRef.current && openPopupPlaceIdRef.current === place.id) {
+          openPopupPlaceIdRef.current = null;
+        }
+      });
       if (isFocusedPlace) {
         openPopupPlaceIdRef.current = place.id;
         marker.openPopup();
@@ -3469,6 +3487,7 @@ function MapCanvas(props: {
     }
 
     window.setTimeout(() => map.invalidateSize(), 0);
+    rebuildingLayersRef.current = false;
   }, [props.dayItems, props.focusedItemId, props.focusedPlaceId, props.selectedDay?.id, props.tripState]);
 
   return (
