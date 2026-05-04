@@ -2,7 +2,7 @@ CREATE TABLE chat_sessions (
   id TEXT PRIMARY KEY,
   trip_id TEXT NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
   title TEXT NOT NULL,
-  provider TEXT NOT NULL DEFAULT 'mock',
+  provider TEXT NOT NULL DEFAULT 'codex-app-server',
   model TEXT,
   status TEXT NOT NULL DEFAULT 'idle',
   settings_json TEXT NOT NULL DEFAULT '{}',

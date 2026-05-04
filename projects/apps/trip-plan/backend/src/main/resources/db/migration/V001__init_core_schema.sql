@@ -63,7 +63,7 @@ CREATE TABLE itinerary_items (
   lat REAL,
   lng REAL,
   sort_order INTEGER NOT NULL,
-  locked INTEGER NOT NULL DEFAULT 0,
+  locked BOOLEAN NOT NULL DEFAULT FALSE,
   raw_json TEXT NOT NULL DEFAULT '{}',
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL

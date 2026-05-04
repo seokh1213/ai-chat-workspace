@@ -25,6 +25,7 @@ import org.springframework.test.context.ActiveProfiles
 @SpringBootTest(
     properties = [
         "spring.datasource.url=jdbc:sqlite:file:trip_planner_test?mode=memory&cache=shared",
+        "spring.datasource.driver-class-name=org.sqlite.JDBC",
         "app.ai.codex-app-server.managed=false",
     ],
 )

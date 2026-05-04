@@ -1,7 +1,7 @@
 -- Bootstrap seed only.
 -- Real trip data, including Okinawa data, is intentionally kept outside the code repository.
 
-INSERT OR IGNORE INTO workspaces (
+INSERT INTO workspaces (
   id,
   name,
   created_at,
@@ -9,6 +9,7 @@ INSERT OR IGNORE INTO workspaces (
 ) VALUES (
   'workspace_default',
   'Default workspace',
-  strftime('%Y-%m-%dT%H:%M:%fZ', 'now'),
-  strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
-);
+  CURRENT_TIMESTAMP,
+  CURRENT_TIMESTAMP
+)
+ON CONFLICT (id) DO NOTHING;

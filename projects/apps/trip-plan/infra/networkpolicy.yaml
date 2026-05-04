@@ -1,0 +1,59 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: trip-plan-app-ingress
+  namespace: trip-plan
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: trip-plan-app
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: tailscale
+      ports:
+        - protocol: TCP
+          port: 8081
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: trip-plan-postgres-ingress
+  namespace: trip-plan
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: trip-plan-postgres
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: trip-plan-app
+      ports:
+        - protocol: TCP
+          port: 5432
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: trip-plan-codex-ingress
+  namespace: trip-plan
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: trip-plan-codex
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: trip-plan-app
+      ports:
+        - protocol: TCP
+          port: 8765

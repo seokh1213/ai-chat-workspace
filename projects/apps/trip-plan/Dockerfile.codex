@@ -1,0 +1,21 @@
+FROM node:22-bookworm-slim
+
+ARG CODEX_VERSION=0.128.0
+
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends ca-certificates \
+  && rm -rf /var/lib/apt/lists/* \
+  && npm install -g "@openai/codex@${CODEX_VERSION}" \
+  && useradd --create-home --home-dir /ai-chat --shell /bin/bash codex \
+  && mkdir -p /ai-chat/.codex \
+  && chown -R codex:codex /ai-chat
+
+USER codex
+WORKDIR /ai-chat
+
+ENV HOME=/ai-chat
+ENV CODEX_HOME=/ai-chat/.codex
+
+EXPOSE 8765
+
+ENTRYPOINT ["codex", "app-server", "--listen", "ws://0.0.0.0:8765"]

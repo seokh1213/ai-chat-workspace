@@ -2,11 +2,12 @@ spring:
   application:
     name: trip-planner
   datasource:
-    url: ${TRIP_PLANNER_DB_URL:jdbc:sqlite:.data/trip-planner-backend.sqlite}
-    driver-class-name: org.sqlite.JDBC
+    url: ${TRIP_PLANNER_DB_URL:jdbc:postgresql://localhost:5432/trip_plan}
+    username: ${TRIP_PLANNER_DB_USER:trip_plan}
+    password: ${TRIP_PLANNER_DB_PASSWORD:trip_plan}
+    driver-class-name: ${TRIP_PLANNER_DB_DRIVER:org.postgresql.Driver}
     hikari:
-      connection-init-sql: PRAGMA foreign_keys=ON
-      maximum-pool-size: 1
+      maximum-pool-size: ${TRIP_PLANNER_DB_POOL_SIZE:5}
   flyway:
     enabled: true
     locations: classpath:db/migration

@@ -1,0 +1,7 @@
+.git
+.gradle
+.data
+**/build
+**/dist
+**/node_modules
+legacy-node/.data

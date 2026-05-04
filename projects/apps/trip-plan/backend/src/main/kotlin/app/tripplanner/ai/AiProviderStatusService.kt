@@ -41,8 +41,11 @@ class AiProviderStatusService(
     private fun codexStatus(provider: AiProvider): AiProviderStatusDto {
         val healthUri = codexProperties.url.toCodexAppServerHealthUri()
         val processDetail = codexProcessManager.statusDetail()
-        val installCheck = codexInstallCheck()
-        val authCheck = codexAuthCheck()
+        val localChecks = if (codexProperties.managed) {
+            listOf(codexInstallCheck(), codexAuthCheck())
+        } else {
+            emptyList()
+        }
         return runCatching {
             val request = HttpRequest
                 .newBuilder(healthUri)
@@ -55,9 +58,7 @@ class AiProviderStatusService(
                 available = available,
                 status = if (available) "ready" else "unavailable",
                 detail = listOfNotNull("healthz ${response.statusCode()}", processDetail).joinToString(", "),
-                checks = listOf(
-                    installCheck,
-                    authCheck,
+                checks = localChecks + listOf(
                     AiProviderCheckDto(
                         label = "app-server",
                         status = if (available) "ok" else "error",
@@ -73,9 +74,7 @@ class AiProviderStatusService(
                     error.message ?: "Codex app-server is not reachable.",
                     processDetail,
                 ).joinToString(", "),
-                checks = listOf(
-                    installCheck,
-                    authCheck,
+                checks = localChecks + listOf(
                     AiProviderCheckDto(
                         label = "app-server",
                         status = "error",

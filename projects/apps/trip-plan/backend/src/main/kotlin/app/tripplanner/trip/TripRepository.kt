@@ -638,7 +638,7 @@ class TripRepository(
             lat = rs.getNullableDouble("lat"),
             lng = rs.getNullableDouble("lng"),
             sortOrder = rs.getInt("sort_order"),
-            locked = rs.getInt("locked") == 1,
+            locked = rs.getBoolean("locked"),
             rawJson = rs.getString("raw_json"),
             createdAt = rs.getString("created_at"),
             updatedAt = rs.getString("updated_at"),
@@ -701,7 +701,7 @@ private fun JdbcClient.StatementSpec.bindItem(item: ItineraryItemDto): JdbcClien
         .param("lat", item.lat)
         .param("lng", item.lng)
         .param("sortOrder", item.sortOrder)
-        .param("locked", if (item.locked) 1 else 0)
+        .param("locked", item.locked)
         .param("rawJson", item.rawJson)
         .param("createdAt", item.createdAt)
         .param("updatedAt", item.updatedAt)
