@@ -2,15 +2,9 @@
 
 ## 목적
 
-기존 `trip-planner`에서 검증된 구현을 새 skeleton으로 가져오되, 여행 도메인 결합을 줄인다.
+`trip-plan`에서 검증된 구현을 새 skeleton에 맞게 일반화하되, 여행 도메인 결합을 줄인다.
 
-원본:
-
-```text
-/Users/user/personal/여행/오키나와/trip-planner
-```
-
-## 1단계: 그대로 가져와도 되는 것
+## 1단계: 재사용 참고 대상
 
 ### Backend
 
@@ -79,4 +73,3 @@
 - AI가 `domain.upsert_record` operation을 만들고 서버가 적용 가능
 - checkpoint rollback 가능
 - provider를 workspace 설정에서 바꿀 수 있음
-

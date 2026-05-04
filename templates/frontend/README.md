@@ -1,6 +1,6 @@
-# Frontend Skeleton
+# Frontend Template
 
-여기에 React frontend를 생성한다.
+새 프로젝트의 React frontend를 생성할 때 이 템플릿을 기준으로 시작한다.
 
 초기 구현 목표:
 
@@ -12,5 +12,4 @@
 - Markdown streaming renderer
 - provider settings UI
 
-다음 AI Agent는 `../docs/04_FRONTEND_BLUEPRINT.md`를 따른다.
-
+다음 AI Agent는 `../../docs/04_FRONTEND_BLUEPRINT.md`를 따른다.

@@ -1,14 +1,8 @@
-# Code Extraction Guide
+# Reusable Code Guide
 
-원본 프로젝트에서 새 skeleton으로 코드를 가져올 때의 기준이다.
+새 skeleton에서 재사용할 구현 단위를 고를 때의 기준이다.
 
-## 원본 경로
-
-```text
-/Users/user/personal/여행/오키나와/trip-planner
-```
-
-## 그대로 복사 가능한 파일군
+## 재사용 참고 파일군
 
 ### AI Provider
 
@@ -66,7 +60,7 @@ backend/src/main/kotlin/app/tripplanner/chat/ChatRunService.kt
 - SSE event handling hook
 - scroll-to-latest hook
 
-## 복사하지 말 것
+## 도메인별로 별도 설계할 것
 
 - MapCanvas
 - TripMetaForm
@@ -83,4 +77,3 @@ backend/src/main/kotlin/app/tripplanner/chat/ChatRunService.kt
 - `DomainAdapterRegistry`
 - `DomainOperationService`
 - `GenericRecordsAdapter`
-

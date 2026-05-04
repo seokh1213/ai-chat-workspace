@@ -4,11 +4,11 @@
 
 ## Ground Rules
 
-- 기존 `trip-planner` 코드를 직접 수정하지 않는다.
-- 이 프로젝트는 `/Users/user/personal/ai-chat-workspace` 안에서만 작업한다.
+- 실행 가능한 앱은 `projects/` 아래에서 관리한다.
+- 재사용 문서와 시작 템플릿은 `templates/` 아래에서 관리한다.
 - 처음부터 여행 도메인을 이식하지 않는다.
 - 먼저 generic core를 세우고, 여행은 나중에 adapter 예제로 붙인다.
-- UI/UX는 기존 trip-planner의 채팅 UX를 기준으로 한다.
+- UI/UX는 `trip-plan` 앱의 채팅 UX를 참고한다.
 
 ## Phase 1: Project Scaffolding
 
@@ -22,12 +22,14 @@
 권장 구조:
 
 ```text
-backend/
-frontend/
-docs/
-agents/
+projects/
+  apps/
+  reusable/
 templates/
-scripts/
+  agents/
+  backend/
+  docs/
+  frontend/
 ```
 
 ## Phase 2: Core Backend
@@ -43,7 +45,7 @@ scripts/
 7. `ai_edit_run`
 8. `ai_provider_session`
 
-Trip Planner에서 복사 후 이름 변경해도 되는 영역:
+`trip-plan` 앱에서 참고해도 되는 영역:
 
 - chat event broker
 - chat run registry
@@ -81,7 +83,7 @@ domain.reorder_records
 8. Provider status
 9. Checkpoint rollback
 
-Trip Planner에서 가져올 UX:
+`trip-plan` 앱에서 참고할 UX:
 
 - active chat header
 - message meta
@@ -105,7 +107,7 @@ Trip Planner에서 가져올 UX:
 
 목표:
 
-- 기존 Trip Planner 데이터 모델을 참고하되 generic `source_records`를 우선 사용한다.
+- `trip-plan` 데이터 모델을 참고하되 generic `source_records`를 우선 사용한다.
 - 지도는 optional view로 둔다.
 
 ## Phase 7: External Bot
@@ -133,4 +135,3 @@ Telegram adapter부터 추천한다.
 - [ ] full session copy
 - [ ] streaming scroll UX
 - [ ] Docker compose draft
-

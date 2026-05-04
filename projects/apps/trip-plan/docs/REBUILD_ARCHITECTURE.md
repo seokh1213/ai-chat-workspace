@@ -59,7 +59,7 @@ repo-root/
   legacy-node/
 ```
 
-Repository root는 `trip-planner/`다. 코드/문서/미래 frontend/backend는 모두 이 저장소 안에서 관리하고, 실제 여행 원본 자료는 저장소 밖에서 관리한다.
+App root는 `projects/apps/trip-plan/`다. 코드/문서/미래 frontend/backend는 모두 이 앱 디렉터리 안에서 관리하고, 실제 여행 자료는 앱 코드와 분리해 관리한다.
 
 현재 Node 구현은 `legacy-node/`로 이동했다. 초기 migration 기간에는 같은 repository 안에서 보관하되, 기본 개발 경로는 Kotlin backend와 React frontend다.
 
@@ -153,13 +153,13 @@ SQLite
 
 ## State Ownership
 
-서버가 원본이다.
+서버 상태를 기준으로 한다.
 
 - plan, places, chat sessions, messages, checkpoints: SQLite
 - layout preference, panel collapsed state, map viewport: browser localStorage or URL
 - AI 진행 상태: transient SSE event
 
-프론트는 서버 상태를 캐시할 수 있지만, 일정 편집 결과의 최종 원본은 SQLite다.
+프론트는 서버 상태를 캐시할 수 있지만, 일정 편집 결과의 최종 기준 상태는 SQLite다.
 
 ## AI Editing Principle
 
@@ -204,7 +204,7 @@ interface AiProvider {
 }
 ```
 
-Provider adapter는 원본 protocol event를 그대로 노출하지 않고 application-level event로 변환한다.
+Provider adapter는 provider protocol event를 그대로 노출하지 않고 application-level event로 변환한다.
 
 ```text
 Codex app-server WebSocket ┐

@@ -19,7 +19,7 @@ docker network
 ```yaml
 services:
   codex-app-server:
-    image: ai-chat-workspace-codex
+    image: app-codex
     command: codex app-server --listen ws://0.0.0.0:8765
     expose:
       - "8765"
@@ -27,7 +27,7 @@ services:
       - ${CODEX_HOME:-~/.codex}:/home/codex/.codex:ro
 
   backend:
-    image: ai-chat-workspace-backend
+    image: app-backend
     environment:
       CODEX_APP_SERVER_URL: ws://codex-app-server:8765
       CODEX_APP_SERVER_MANAGED: "false"
@@ -38,7 +38,7 @@ services:
       - codex-app-server
 
   frontend:
-    image: ai-chat-workspace-frontend
+    image: app-frontend
     ports:
       - "5173:80"
     depends_on:
@@ -77,4 +77,3 @@ volumes:
 - Codex app-server 직접 제공은 비권장
 - hosted provider 기반
 - workspace auth/RBAC/rate limit 필요
-

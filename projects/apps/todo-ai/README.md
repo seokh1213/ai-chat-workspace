@@ -18,7 +18,7 @@ codex app-server --listen ws://127.0.0.1:8765
 터미널 1:
 
 ```bash
-cd /Users/user/personal/ai-chat-workspace/projects/apps/todo-ai
+cd projects/apps/todo-ai
 export JAVA_HOME=/Library/Java/JavaVirtualMachines/temurin-21.jdk/Contents/Home
 ./gradlew :backend:bootRun
 ```
@@ -26,7 +26,7 @@ export JAVA_HOME=/Library/Java/JavaVirtualMachines/temurin-21.jdk/Contents/Home
 터미널 2:
 
 ```bash
-cd /Users/user/personal/ai-chat-workspace/projects/apps/todo-ai/frontend
+cd projects/apps/todo-ai/frontend
 npm install
 npm run dev
 ```
