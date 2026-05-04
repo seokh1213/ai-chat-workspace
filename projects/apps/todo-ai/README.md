@@ -18,7 +18,7 @@ codex app-server --listen ws://127.0.0.1:8765
 터미널 1:
 
 ```bash
-cd /Users/user/personal/ai-chat-workspace/examples/todo-ai
+cd /Users/user/personal/ai-chat-workspace/projects/apps/todo-ai
 export JAVA_HOME=/Library/Java/JavaVirtualMachines/temurin-21.jdk/Contents/Home
 ./gradlew :backend:bootRun
 ```
@@ -26,7 +26,7 @@ export JAVA_HOME=/Library/Java/JavaVirtualMachines/temurin-21.jdk/Contents/Home
 터미널 2:
 
 ```bash
-cd /Users/user/personal/ai-chat-workspace/examples/todo-ai/frontend
+cd /Users/user/personal/ai-chat-workspace/projects/apps/todo-ai/frontend
 npm install
 npm run dev
 ```
@@ -62,7 +62,7 @@ http://127.0.0.1:4178
 ## 구조
 
 ```text
-examples/todo-ai
+projects/apps/todo-ai
 ├── backend   # Spring Boot Kotlin API
 └── frontend  # Vite React app
 ```

@@ -6,11 +6,11 @@
 
 | Component | Purpose | Source Example |
 | --- | --- | --- |
-| `ChatPanel` | active chat UI, composer, stream display | `examples/reusable/frontend/src/chat/ChatPanel.tsx` |
-| `useChatStream` | EventSource/SSE lifecycle and streaming state | `examples/reusable/frontend/src/chat/useChatStream.ts` |
-| `ChatMessageBubble` | message render, meta row, copy | `examples/reusable/frontend/src/chat/ChatMessageBubble.tsx` |
-| `OperationPreviewList` | operation preview collapse/expand | `examples/reusable/frontend/src/chat/OperationPreviewList.tsx` |
-| `MarkdownContent` | Markdown rendering | `examples/reusable/frontend/src/chat/markdown.tsx` |
+| `ChatPanel` | active chat UI, composer, stream display | `projects/reusable/frontend/src/chat/ChatPanel.tsx` |
+| `useChatStream` | EventSource/SSE lifecycle and streaming state | `projects/reusable/frontend/src/chat/useChatStream.ts` |
+| `ChatMessageBubble` | message render, meta row, copy | `projects/reusable/frontend/src/chat/ChatMessageBubble.tsx` |
+| `OperationPreviewList` | operation preview collapse/expand | `projects/reusable/frontend/src/chat/OperationPreviewList.tsx` |
+| `MarkdownContent` | Markdown rendering | `projects/reusable/frontend/src/chat/markdown.tsx` |
 
 ## Frontend Behaviors
 
@@ -25,13 +25,13 @@
 
 | Class | Purpose | Source Example |
 | --- | --- | --- |
-| `ChatEventBroker` | SseEmitter registry and event publish | `examples/reusable/backend/.../chat/ChatEventBroker.kt` |
-| `ChatRunService` | provider stream orchestration | `examples/reusable/backend/.../chat/ChatRunService.kt` |
-| `ChatController` | REST/SSE endpoints | `examples/reusable/backend/.../chat/ChatController.kt` |
-| `ChatDtos` | DTO contracts | `examples/reusable/backend/.../chat/ChatDtos.kt` |
-| `AiProvider` | provider-neutral streaming contract | `examples/reusable/backend/.../ai/AiProvider.kt` |
-| `ExampleAiProvider` | deterministic dev/test provider | `examples/reusable/backend/.../ai/ExampleAiProvider.kt` |
-| `DomainAdapter` | domain boundary | `examples/reusable/backend/.../domain/DomainAdapter.kt` |
+| `ChatEventBroker` | SseEmitter registry and event publish | `projects/reusable/backend/.../chat/ChatEventBroker.kt` |
+| `ChatRunService` | provider stream orchestration | `projects/reusable/backend/.../chat/ChatRunService.kt` |
+| `ChatController` | REST/SSE endpoints | `projects/reusable/backend/.../chat/ChatController.kt` |
+| `ChatDtos` | DTO contracts | `projects/reusable/backend/.../chat/ChatDtos.kt` |
+| `AiProvider` | provider-neutral streaming contract | `projects/reusable/backend/.../ai/AiProvider.kt` |
+| `ExampleAiProvider` | deterministic dev/test provider | `projects/reusable/backend/.../ai/ExampleAiProvider.kt` |
+| `DomainAdapter` | domain boundary | `projects/reusable/backend/.../domain/DomainAdapter.kt` |
 
 ## Required Project-Specific Pieces
 

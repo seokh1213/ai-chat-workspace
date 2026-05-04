@@ -36,7 +36,7 @@ First phase:
 1. Scaffold backend and frontend.
 2. Implement workspace/data-space/source-record CRUD.
 3. Implement chat session CRUD.
-4. Implement SSE chat stream using the examples in examples/.
+4. Implement SSE chat stream using the project apps in projects/.
 5. Implement ExampleAiProvider.
 6. Implement GenericRecordsDomainAdapter.
 7. Add tests for operation parsing and checkpoint rollback.
@@ -44,4 +44,3 @@ First phase:
 Before coding, produce a short implementation plan with file paths and risk points.
 Then implement end-to-end and run tests/build.
 ```
-

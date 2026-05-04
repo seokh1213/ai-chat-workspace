@@ -31,12 +31,12 @@ Workspace
     Checkpoints
 ```
 
-## Examples
+## Projects
 
-실행 가능한 예제 앱은 `examples/` 아래에 둔다. Git 이력은 포함하지 않고 소스만 둔다.
+실행 가능한 예제 앱은 `projects/` 아래에 둔다. Git 이력은 포함하지 않고 소스만 둔다.
 
 ```text
-examples/
+projects/
   apps/
     trip-plan/ # 여행 계획 + 지도 + AI 편집, 원본 trip-planner 기반
     mind-plan/ # 마인드/생각 정리 도메인 예제

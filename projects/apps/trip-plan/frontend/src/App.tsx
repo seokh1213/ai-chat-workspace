@@ -31,6 +31,7 @@ import {
   type KeyboardEvent,
   type PointerEvent as ReactPointerEvent,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState
@@ -88,6 +89,7 @@ import type {
 type Screen = "select" | "create" | "edit";
 type LoadState = "loading" | "ready" | "error";
 type MapTileMode = "english" | "local";
+type MobileEditorView = "planner" | "chat";
 type TripFormState = {
   title: string;
   destinationName: string;
@@ -206,6 +208,7 @@ const aiEffortOptions: AiEffortOption[] = [
 ];
 const markdownPlugins = [remarkGfm, remarkBreaks, remarkLenientStrong];
 const editorLayoutStorageKey = "trip-planner-editor-layout";
+const mapTileModeStorageKey = "trip-planner-map-tile-mode-v2";
 const chatDraftStoragePrefix = "trip-planner-chat-draft";
 const defaultEditorLayout: EditorLayout = {
   plannerWidth: 440,
@@ -579,6 +582,8 @@ function App() {
       setChatText(readChatDraft(tripId, session.id));
       setChatSessionId(session.id);
       setActiveChatId(session.id);
+      setMessages([]);
+      setEditRuns([]);
       const detail = await getChatSession(session.id);
       setMessages(detail.messages);
       setEditRuns(detail.editRuns);
@@ -597,6 +602,8 @@ function App() {
     setChatText(activeTrip ? readChatDraft(activeTrip.id, sessionId) : "");
     setChatSessionId(sessionId);
     setActiveChatId(sessionId);
+    setMessages([]);
+    setEditRuns([]);
     const detail = await getChatSession(sessionId);
     setMessages(detail.messages);
     setEditRuns(detail.editRuns);
@@ -1842,9 +1849,17 @@ function EditorScreen(props: {
   const [isChatMarkdownCopied, setIsChatMarkdownCopied] = useState(false);
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
   const [showScrollToLatest, setShowScrollToLatest] = useState(false);
+  const [mobileView, setMobileView] = useState<MobileEditorView>(() => (props.activeChatId ? "chat" : "planner"));
   const lineBreakModifier = isWindowsUserAgent() ? "Alt" : "Option";
   const chatLogRef = useRef<HTMLDivElement | null>(null);
   const shouldAutoScrollChatRef = useRef(true);
+  const editorClassName = [
+    props.className,
+    mobileView === "chat" ? "mobile-chat-open" : "mobile-planner-open",
+    props.activeChatId ? "mobile-chat-detail" : "mobile-chat-list"
+  ]
+    .filter(Boolean)
+    .join(" ");
   const layoutStyle = {
     "--planner-width": `${props.layout.plannerWidth}px`,
     "--chat-width": `${props.layout.chatWidth}px`,
@@ -1852,14 +1867,20 @@ function EditorScreen(props: {
   } as CSSProperties;
 
   useEffect(() => {
+    if (props.activeChatId) {
+      setMobileView("chat");
+    }
+  }, [props.activeChatId]);
+
+  useLayoutEffect(() => {
     setChatTitleDraft(activeChatSession?.title ?? "");
     setIsChatMarkdownCopied(false);
     shouldAutoScrollChatRef.current = true;
     setShowScrollToLatest(false);
-    window.requestAnimationFrame(() => scrollChatToLatest("auto"));
+    scrollChatToLatest("auto");
   }, [activeChatSession?.id, activeChatSession?.title]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const chatLog = chatLogRef.current;
     if (!chatLog) return;
 
@@ -1928,6 +1949,36 @@ function EditorScreen(props: {
     await writeClipboardText(buildChatMessageContentMarkdown(message));
     setCopiedMessageId(message.id);
     window.setTimeout(() => setCopiedMessageId(null), 1400);
+  }
+
+  function openMobileChatList() {
+    if (props.chatCollapsed) {
+      props.onToggleChat();
+    }
+    props.onOpenChatList();
+    setMobileView("chat");
+  }
+
+  function closeMobileChat() {
+    setMobileView("planner");
+  }
+
+  function openChatList() {
+    props.onOpenChatList();
+    setMobileView("chat");
+  }
+
+  function createChatSession() {
+    if (props.chatCollapsed) {
+      props.onToggleChat();
+    }
+    setMobileView("chat");
+    props.onCreateChatSession();
+  }
+
+  function selectChatSession(sessionId: string) {
+    setMobileView("chat");
+    props.onSelectChatSession(sessionId);
   }
 
   function startPanelResize(event: ReactPointerEvent, panel: "planner" | "chat") {
@@ -2006,7 +2057,7 @@ function EditorScreen(props: {
   }
 
   return (
-    <main className={props.className} style={layoutStyle}>
+    <main className={editorClassName} style={layoutStyle}>
       {!props.plannerCollapsed ? (
         <aside className="planner-sidebar">
           <div className="panel-header">
@@ -2014,9 +2065,15 @@ function EditorScreen(props: {
               <ChevronLeft size={16} />
               여행 목록
             </button>
-            <button className="icon-button" type="button" aria-label="왼쪽 패널 접기" onClick={props.onTogglePlanner}>
-              <PanelLeftClose size={17} />
-            </button>
+            <div className="panel-header-actions">
+              <button className="secondary-button mobile-chat-entry" type="button" onClick={openMobileChatList}>
+                <Bot size={15} />
+                대화
+              </button>
+              <button className="icon-button" type="button" aria-label="왼쪽 패널 접기" onClick={props.onTogglePlanner}>
+                <PanelLeftClose size={17} />
+              </button>
+            </div>
           </div>
 
           <TripMetaForm
@@ -2283,18 +2340,24 @@ function EditorScreen(props: {
       {!props.chatCollapsed ? (
         <aside className="chat-panel">
           <div className="chat-header">
-            <div className="chat-heading">
-              {props.activeChatId ? (
-                <>
-                  <strong>AI 대화</strong>
-                  <span>메시지별 복사와 변경 내역을 확인합니다</span>
-                </>
-              ) : (
-                <>
-                  <strong>AI 대화</strong>
-                  <span>주제별로 나눠서 이어갑니다</span>
-                </>
-              )}
+            <div className="chat-header-main">
+              <button className="text-back-button compact mobile-planner-entry" type="button" onClick={closeMobileChat}>
+                <ChevronLeft size={16} />
+                여행
+              </button>
+              <div className="chat-heading">
+                {props.activeChatId ? (
+                  <>
+                    <strong>AI 대화</strong>
+                    <span>메시지별 복사와 변경 내역을 확인합니다</span>
+                  </>
+                ) : (
+                  <>
+                    <strong>AI 대화</strong>
+                    <span>주제별로 나눠서 이어갑니다</span>
+                  </>
+                )}
+              </div>
             </div>
             <div className="chat-header-actions">
               <button
@@ -2302,11 +2365,11 @@ function EditorScreen(props: {
                 type="button"
                 aria-label="새 대화"
                 disabled={props.isChatSessionCreating}
-                onClick={props.onCreateChatSession}
+                onClick={createChatSession}
               >
                 <Plus size={17} />
               </button>
-              <button className="icon-button" type="button" aria-label="일정 조율 접기" onClick={props.onToggleChat}>
+              <button className="icon-button desktop-chat-collapse" type="button" aria-label="일정 조율 접기" onClick={props.onToggleChat}>
                 <PanelRightClose size={17} />
               </button>
             </div>
@@ -2316,7 +2379,7 @@ function EditorScreen(props: {
               <div className="active-chat-title">
                 {activeChatSession ? (
                   <form className="active-chat-toolbar" onSubmit={submitActiveChatTitle}>
-                    <button className="text-back-button compact" type="button" onClick={props.onOpenChatList}>
+                    <button className="text-back-button compact" type="button" onClick={openChatList}>
                       <ChevronLeft size={16} />
                       목록
                     </button>
@@ -2419,8 +2482,8 @@ function EditorScreen(props: {
               checkpoints={props.checkpoints}
               creating={props.isChatSessionCreating}
               rollingBack={props.isRollingBack}
-              onCreateSession={props.onCreateChatSession}
-              onSelectSession={props.onSelectChatSession}
+              onCreateSession={createChatSession}
+              onSelectSession={selectChatSession}
               onRenameSession={props.onRenameChatSession}
               onCopySession={props.onCopyChatSession}
               onDeleteSession={props.onDeleteChatSession}
@@ -2937,7 +3000,7 @@ function MapCanvas(props: {
     const tileLayer = createMapTileLayer(tileMode).addTo(map);
     tileLayer.bringToBack();
     tileLayerRef.current = tileLayer;
-    window.localStorage.setItem("trip-planner-map-tile-mode", tileMode);
+    window.localStorage.setItem(mapTileModeStorageKey, tileMode);
   }, [tileMode]);
 
   useEffect(() => {
@@ -3570,8 +3633,8 @@ function hasCoordinates<T extends { lat: number | null | undefined; lng: number 
 }
 
 function readMapTileMode(): MapTileMode {
-  const stored = window.localStorage.getItem("trip-planner-map-tile-mode");
-  return stored === "local" || stored === "english" ? stored : "english";
+  const stored = window.localStorage.getItem(mapTileModeStorageKey);
+  return stored === "local" || stored === "english" ? stored : "local";
 }
 
 function createMapTileLayer(mode: MapTileMode): L.TileLayer {
