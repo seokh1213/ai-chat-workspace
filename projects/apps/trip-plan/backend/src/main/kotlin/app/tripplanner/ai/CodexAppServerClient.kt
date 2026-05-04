@@ -366,7 +366,7 @@ private class JsonRpcConnection(
 ) : AutoCloseable {
     private val listener = QueueingWebSocketListener(objectMapper)
     private val deferredMessages = LinkedBlockingDeque<JsonNode>()
-    private val deadlineNanos = System.nanoTime() + timeout.toNanos()
+    private val idleTimeoutMillis = timeout.toMillis().coerceAtLeast(1)
     private val client = HttpClient
         .newBuilder()
         .connectTimeout(timeout)
@@ -422,11 +422,7 @@ private class JsonRpcConnection(
     }
 
     private fun remainingMillis(): Long {
-        val remainingNanos = deadlineNanos - System.nanoTime()
-        if (remainingNanos <= 0) {
-            throw IllegalStateException("Timed out waiting for Codex app-server event.")
-        }
-        return TimeUnit.NANOSECONDS.toMillis(remainingNanos).coerceAtLeast(1)
+        return idleTimeoutMillis
     }
 }
 

@@ -12,6 +12,7 @@ import {
   Copy,
   Edit3,
   History,
+  Loader2,
   MapPinned,
   Navigation,
   PanelLeftClose,
@@ -213,6 +214,8 @@ const editorLayoutStorageKey = "trip-planner-editor-layout";
 const mapTileModeStorageKey = "trip-planner-map-tile-mode-v2";
 const mapViewStoragePrefix = "trip-planner-map-view";
 const chatDraftStoragePrefix = "trip-planner-chat-draft";
+const chatEventSilenceTimeoutMs = 20_000;
+const chatEventReconnectDelayMs = 500;
 const defaultEditorLayout: EditorLayout = {
   plannerWidth: 440,
   chatWidth: 420,
@@ -230,6 +233,8 @@ function App() {
   const [workspaceSettingsForm, setWorkspaceSettingsForm] = useState<WorkspaceSettingsForm>(() => workspaceToSettingsForm(null));
   const [providerStatuses, setProviderStatuses] = useState<AiProviderStatus[]>([]);
   const [trips, setTrips] = useState<Trip[]>([]);
+  const [isTripsLoading, setIsTripsLoading] = useState(false);
+  const [isTripOpening, setIsTripOpening] = useState(false);
   const [tripState, setTripState] = useState<TripState | null>(null);
   const [selectedDayId, setSelectedDayId] = useState<string>("");
   const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
@@ -237,6 +242,8 @@ function App() {
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [editRuns, setEditRuns] = useState<AiEditRunSummary[]>([]);
+  const [isChatSessionsLoading, setIsChatSessionsLoading] = useState(false);
+  const [isChatDetailLoading, setIsChatDetailLoading] = useState(false);
   const [plannerCollapsed, setPlannerCollapsed] = useState(false);
   const [chatCollapsed, setChatCollapsed] = useState(false);
   const [scheduleCollapsed, setScheduleCollapsed] = useState(false);
@@ -258,6 +265,7 @@ function App() {
   const [isChatSessionCreating, setIsChatSessionCreating] = useState(false);
   const [isRollingBack, setIsRollingBack] = useState(false);
   const [tripForm, setTripForm] = useState<TripFormState>(emptyTripForm);
+  const [isTripSubmitting, setIsTripSubmitting] = useState(false);
   const [metaForm, setMetaForm] = useState<TripFormState>(emptyTripForm);
   const [isMetaSaving, setIsMetaSaving] = useState(false);
   const [setupMessages, setSetupMessages] = useState<SetupAssistantMessage[]>([setupIntro]);
@@ -268,6 +276,12 @@ function App() {
   const chatStreamQueueRef = useRef("");
   const chatStreamPumpRef = useRef<number | null>(null);
   const chatStreamDeltaSeenRef = useRef(false);
+  const chatActiveRunIdRef = useRef<string | null>(null);
+  const isChatSendingRef = useRef(false);
+  const chatEventStreamControlRef = useRef<{ poke: () => void; restart: (reason: string) => void } | null>(null);
+  const tripListRequestRef = useRef(0);
+  const tripOpenRequestRef = useRef(0);
+  const chatLoadRequestRef = useRef(0);
 
   function clearChatStreamBuffer() {
     if (chatStreamPumpRef.current != null) {
@@ -324,6 +338,11 @@ function App() {
     const handlePopState = () => {
       const route = parseRoute();
       if (route.screen === "create") {
+        ++tripOpenRequestRef.current;
+        ++chatLoadRequestRef.current;
+        setIsTripOpening(false);
+        setIsChatSessionsLoading(false);
+        setIsChatDetailLoading(false);
         setTripState(null);
         setScreen("create");
         return;
@@ -332,6 +351,11 @@ function App() {
         void enterTrip(route.tripId, { updatePath: false, chatSessionId: route.chatSessionId });
         return;
       }
+      ++tripOpenRequestRef.current;
+      ++chatLoadRequestRef.current;
+      setIsTripOpening(false);
+      setIsChatSessionsLoading(false);
+      setIsChatDetailLoading(false);
       setTripState(null);
       setScreen("select");
     };
@@ -371,29 +395,136 @@ function App() {
   }, [chatRunStartedAtMs, isChatSending]);
 
   useEffect(() => {
+    isChatSendingRef.current = isChatSending;
+    if (isChatSending) {
+      chatEventStreamControlRef.current?.poke();
+    }
+  }, [isChatSending]);
+
+  useEffect(() => {
     if (!activeChatId) {
+      isChatSendingRef.current = false;
       setIsChatSending(false);
       setChatStreamLabel(null);
       setChatActivity(null);
       setChatStreamingText("");
       setChatRunStartedAtMs(null);
+      chatActiveRunIdRef.current = null;
       clearChatStreamBuffer();
       return;
     }
 
+    const eventSessionId = activeChatId;
     chatStreamMutedRef.current = false;
     clearChatStreamBuffer();
     setChatStreamingText("");
-    const source = new EventSource(`/api/chat-sessions/${encodeURIComponent(activeChatId)}/events`);
+    let source: EventSource | null = null;
+    let reconnectTimer: number | null = null;
+    let silenceTimer: number | null = null;
+    let lastServerEventAt = Date.now();
+    let isDisposed = false;
+
+    const shouldWatchStream = () => isChatSendingRef.current && !chatStreamMutedRef.current;
+
+    const clearSilenceTimer = () => {
+      if (silenceTimer != null) {
+        window.clearTimeout(silenceTimer);
+        silenceTimer = null;
+      }
+    };
+
+    const scheduleSilenceWatch = () => {
+      clearSilenceTimer();
+      if (!shouldWatchStream()) return;
+      const elapsedMs = Date.now() - lastServerEventAt;
+      silenceTimer = window.setTimeout(() => {
+        if (isDisposed || !shouldWatchStream()) return;
+        if (Date.now() - lastServerEventAt >= chatEventSilenceTimeoutMs) {
+          restartEventStream("silent");
+          return;
+        }
+        scheduleSilenceWatch();
+      }, Math.max(0, chatEventSilenceTimeoutMs - elapsedMs));
+    };
+
+    const noteServerEvent = () => {
+      lastServerEventAt = Date.now();
+      scheduleSilenceWatch();
+    };
+
+    const refreshInterruptedStreamState = async () => {
+      try {
+        const detail = await getChatSession(eventSessionId);
+        if (isDisposed) return;
+
+        setChatSessions((current) => current.map((session) => (session.id === detail.session.id ? detail.session : session)));
+        setMessages(detail.messages);
+        setEditRuns(detail.editRuns);
+
+        const activeRunId = chatActiveRunIdRef.current;
+        const activeRun = activeRunId ? detail.editRuns.find((run) => run.id === activeRunId) : null;
+        const latestMessage = detail.messages[detail.messages.length - 1] ?? null;
+        const activeRunFinished = activeRun ? isTerminalChatRunStatus(activeRun.status) : false;
+        const latestMessageFinished = activeRunId != null && latestMessage?.role === "assistant";
+
+        if (activeRunFinished || latestMessageFinished) {
+          if (activeRun?.status === "applied" && tripState?.trip.id) {
+            const nextState = await getTripState(tripState.trip.id);
+            if (!isDisposed) {
+              setTripState(nextState);
+              setSelectedDayId((currentDayId) =>
+                nextState.days.some((day) => day.id === currentDayId) ? currentDayId : nextState.days[0]?.id ?? ""
+              );
+            }
+          }
+          if (!isDisposed) {
+            chatActiveRunIdRef.current = null;
+            isChatSendingRef.current = false;
+            setIsChatSending(false);
+            setChatStreamingText("");
+            setChatOperationPreview([]);
+            setChatActivity(null);
+            setChatRunStartedAtMs(null);
+            setChatStreamLabel("응답 상태를 동기화했습니다.");
+            clearChatStreamBuffer();
+            window.setTimeout(() => setChatStreamLabel(null), 1200);
+          }
+        }
+      } catch (nextError) {
+        console.debug("chat stream recovery refresh failed", nextError);
+      }
+    };
+
+    function restartEventStream(reason: string) {
+      if (isDisposed) return;
+      console.debug("chat event stream restarting", reason);
+      clearSilenceTimer();
+      source?.close();
+      source = null;
+      void refreshInterruptedStreamState();
+      if (reconnectTimer != null) {
+        window.clearTimeout(reconnectTimer);
+      }
+      reconnectTimer = window.setTimeout(() => {
+        reconnectTimer = null;
+        if (!isDisposed) {
+          openEventStream();
+        }
+      }, chatEventReconnectDelayMs);
+    }
+
     const settle = (label: string) => {
       if (chatStreamMutedRef.current) return;
       setChatStreamLabel(label);
       window.setTimeout(() => setChatStreamLabel(null), 1200);
     };
     const onStarted = (event: MessageEvent) => {
-      const data = parseSseData<{ createdAt?: string; message?: string }>(event);
+      noteServerEvent();
+      const data = parseSseData<{ runId?: string; createdAt?: string; message?: string }>(event);
+      chatActiveRunIdRef.current = data?.runId ?? chatActiveRunIdRef.current;
       chatStreamMutedRef.current = false;
       clearChatStreamBuffer();
+      isChatSendingRef.current = true;
       setIsChatSending(true);
       setChatStreamingText("");
       setChatActivity(null);
@@ -401,17 +532,23 @@ function App() {
       setChatStreamLabel(data?.message ?? "요청을 분석하는 중입니다.");
     };
     const onActivity = (event: MessageEvent) => {
+      noteServerEvent();
       if (chatStreamMutedRef.current) return;
       const data = parseSseData<ChatRunActivityEvent>(event);
       if (!data) return;
+      chatActiveRunIdRef.current = data.runId ?? chatActiveRunIdRef.current;
+      isChatSendingRef.current = true;
       setIsChatSending(true);
       setChatActivity(data);
       setChatStreamLabel(data.label);
     };
     const onAssistantDelta = (event: MessageEvent) => {
+      noteServerEvent();
       if (chatStreamMutedRef.current) return;
-      const data = parseSseData<{ delta?: string }>(event);
+      const data = parseSseData<{ runId?: string; delta?: string }>(event);
+      chatActiveRunIdRef.current = data?.runId ?? chatActiveRunIdRef.current;
       if (data?.delta) {
+        isChatSendingRef.current = true;
         setIsChatSending(true);
         setChatRunStartedAtMs((current) => current ?? Date.now());
         enqueueChatStreamDelta(data.delta);
@@ -420,9 +557,12 @@ function App() {
       }
     };
     const onAssistantCompleted = (event: MessageEvent) => {
+      noteServerEvent();
       if (chatStreamMutedRef.current) return;
-      const data = parseSseData<{ content?: string }>(event);
+      const data = parseSseData<{ runId?: string; content?: string }>(event);
+      chatActiveRunIdRef.current = data?.runId ?? chatActiveRunIdRef.current;
       if (data?.content && !chatStreamDeltaSeenRef.current) {
+        isChatSendingRef.current = true;
         setIsChatSending(true);
         setChatStreamingText(data.content);
         setChatActivity(null);
@@ -430,8 +570,10 @@ function App() {
       }
     };
     const onProposed = (event: MessageEvent) => {
+      noteServerEvent();
       if (chatStreamMutedRef.current) return;
-      const data = parseSseData<{ operationCount?: number; operationPreview?: string[] }>(event);
+      const data = parseSseData<{ runId?: string; operationCount?: number; operationPreview?: string[] }>(event);
+      chatActiveRunIdRef.current = data?.runId ?? chatActiveRunIdRef.current;
       setChatOperationPreview(data?.operationPreview ?? []);
       setChatStreamLabel(data?.operationCount ? "변경안을 검증하는 중입니다." : "응답을 정리하는 중입니다.");
     };
@@ -453,16 +595,20 @@ function App() {
       } catch (nextError) {
         console.debug("chat stream final refresh failed", nextError);
       } finally {
+        isChatSendingRef.current = false;
         setIsChatSending(false);
         setChatStreamingText("");
         setChatOperationPreview([]);
         setChatActivity(null);
         setChatRunStartedAtMs(null);
+        chatActiveRunIdRef.current = null;
         clearChatStreamBuffer();
       }
     };
     const onCompleted = (event: MessageEvent) => {
+      noteServerEvent();
       const run = parseSseData<AiEditRunSummary>(event);
+      chatActiveRunIdRef.current = run?.id ?? chatActiveRunIdRef.current;
       if (run?.id) {
         setEditRuns((current) => [run, ...current.filter((candidate) => candidate.id !== run.id)]);
       }
@@ -470,12 +616,15 @@ function App() {
       void waitForChatStreamDrain().then(() => refreshCompletedRun(run ?? null));
     };
     const onCancelled = (event: MessageEvent) => {
+      noteServerEvent();
       chatStreamMutedRef.current = true;
       clearChatStreamBuffer();
+      isChatSendingRef.current = false;
       setIsChatSending(false);
       setChatStreamingText("");
       setChatActivity(null);
       setChatRunStartedAtMs(null);
+      chatActiveRunIdRef.current = null;
       const run = parseSseData<AiEditRunSummary>(event);
       if (run?.id) {
         setEditRuns((current) => [run, ...current.filter((candidate) => candidate.id !== run.id)]);
@@ -494,28 +643,59 @@ function App() {
       window.setTimeout(() => setChatStreamLabel(null), 1200);
     };
     const onSnapshot = (event: MessageEvent) => {
+      noteServerEvent();
       const run = parseSseData<AiEditRunSummary>(event);
       if (run?.id) {
         setEditRuns((current) => [run, ...current.filter((candidate) => candidate.id !== run.id)]);
       }
     };
 
-    source.addEventListener("run.started", onStarted);
-    source.addEventListener("run.activity", onActivity);
-    source.addEventListener("assistant.message.delta", onAssistantDelta);
-    source.addEventListener("assistant.message.completed", onAssistantCompleted);
-    source.addEventListener("operations.proposed", onProposed);
-    source.addEventListener("run.applied", onCompleted);
-    source.addEventListener("run.completed", onCompleted);
-    source.addEventListener("run.failed", onCompleted);
-    source.addEventListener("run.cancelled", onCancelled);
-    source.addEventListener("run.snapshot", onSnapshot);
-    source.onerror = (event) => {
-      console.debug("chat event stream error", event);
+    const onReady = () => {
+      noteServerEvent();
     };
 
+    function openEventStream() {
+      source?.close();
+      source = new EventSource(`/api/chat-sessions/${encodeURIComponent(eventSessionId)}/events`);
+      source.addEventListener("ready", onReady);
+      source.addEventListener("run.started", onStarted);
+      source.addEventListener("run.activity", onActivity);
+      source.addEventListener("assistant.message.delta", onAssistantDelta);
+      source.addEventListener("assistant.message.completed", onAssistantCompleted);
+      source.addEventListener("operations.proposed", onProposed);
+      source.addEventListener("run.applied", onCompleted);
+      source.addEventListener("run.completed", onCompleted);
+      source.addEventListener("run.failed", onCompleted);
+      source.addEventListener("run.cancelled", onCancelled);
+      source.addEventListener("run.snapshot", onSnapshot);
+      source.onerror = (event) => {
+        console.debug("chat event stream error", event);
+        if (shouldWatchStream()) {
+          restartEventStream("error");
+        }
+      };
+      scheduleSilenceWatch();
+    }
+
+    chatEventStreamControlRef.current = {
+      poke: () => {
+        lastServerEventAt = Date.now();
+        scheduleSilenceWatch();
+      },
+      restart: restartEventStream
+    };
+    openEventStream();
+
     return () => {
-      source.close();
+      isDisposed = true;
+      if (chatEventStreamControlRef.current?.restart === restartEventStream) {
+        chatEventStreamControlRef.current = null;
+      }
+      if (reconnectTimer != null) {
+        window.clearTimeout(reconnectTimer);
+      }
+      clearSilenceTimer();
+      source?.close();
       clearChatStreamBuffer();
     };
   }, [activeChatId, tripState?.trip.id]);
@@ -551,8 +731,22 @@ function App() {
   }
 
   async function loadTrips(nextWorkspaceId: string) {
-    const nextTrips = await getTrips(nextWorkspaceId);
-    setTrips(nextTrips);
+    const requestId = ++tripListRequestRef.current;
+    setIsTripsLoading(true);
+    try {
+      const nextTrips = await getTrips(nextWorkspaceId);
+      if (requestId === tripListRequestRef.current) {
+        setTrips(nextTrips);
+      }
+    } catch (nextError) {
+      if (requestId === tripListRequestRef.current) {
+        window.alert(readError(nextError));
+      }
+    } finally {
+      if (requestId === tripListRequestRef.current) {
+        setIsTripsLoading(false);
+      }
+    }
   }
 
   async function refreshProviderStatuses(): Promise<void> {
@@ -565,53 +759,111 @@ function App() {
   }
 
   async function enterTrip(tripId: string, options: { updatePath?: boolean; chatSessionId?: string } = {}) {
-    const state = await getTripState(tripId);
-    setTripState(state);
-    setMetaForm(tripToForm(state.trip));
-    setSelectedDayId(state.days[0]?.id ?? "");
-    setFocusedItemId(null);
-    setScreen("edit");
-    if (options.updatePath !== false) {
-      pushAppPath(`/trips/${encodeURIComponent(tripId)}`);
-    }
-    await loadChat(tripId, options.chatSessionId);
-  }
-
-  async function loadChat(tripId: string, preferredSessionId?: string) {
-    const sessions = await getChatSessions(tripId);
-    setChatSessions(sessions);
-    const session = sessions.find((candidate) => candidate.id === preferredSessionId);
-    if (session) {
-      setChatText(readChatDraft(tripId, session.id));
-      setChatSessionId(session.id);
-      setActiveChatId(session.id);
-      setMessages([]);
-      setEditRuns([]);
-      const detail = await getChatSession(session.id);
-      setMessages(detail.messages);
-      setEditRuns(detail.editRuns);
-      return;
-    }
-
+    const requestId = ++tripOpenRequestRef.current;
+    setIsTripOpening(true);
+    setChatSessions([]);
     setChatSessionId("");
     setActiveChatId(null);
     setMessages([]);
     setEditRuns([]);
     setChatText("");
+    try {
+      const state = await getTripState(tripId);
+      if (requestId !== tripOpenRequestRef.current) return;
+      setTripState(state);
+      setMetaForm(tripToForm(state.trip));
+      setSelectedDayId(state.days[0]?.id ?? "");
+      setFocusedItemId(null);
+      setScreen("edit");
+      if (options.updatePath !== false) {
+        pushAppPath(`/trips/${encodeURIComponent(tripId)}`);
+      }
+      await loadChat(tripId, options.chatSessionId);
+    } catch (nextError) {
+      const message = readError(nextError);
+      if (options.updatePath === false && !tripState) {
+        setError(message);
+        setLoadState("error");
+      } else {
+        window.alert(message);
+      }
+    } finally {
+      if (requestId === tripOpenRequestRef.current) {
+        setIsTripOpening(false);
+      }
+    }
+  }
+
+  async function loadChat(tripId: string, preferredSessionId?: string) {
+    const requestId = ++chatLoadRequestRef.current;
+    setIsChatSessionsLoading(true);
+    setIsChatDetailLoading(false);
+    try {
+      const sessions = await getChatSessions(tripId);
+      if (requestId !== chatLoadRequestRef.current) return;
+      setChatSessions(sessions);
+      const session = sessions.find((candidate) => candidate.id === preferredSessionId);
+      if (session) {
+        setChatText(readChatDraft(tripId, session.id));
+        setChatSessionId(session.id);
+        setActiveChatId(session.id);
+        setMessages([]);
+        setEditRuns([]);
+        setIsChatDetailLoading(true);
+        try {
+          const detail = await getChatSession(session.id);
+          if (requestId !== chatLoadRequestRef.current) return;
+          setMessages(detail.messages);
+          setEditRuns(detail.editRuns);
+        } finally {
+          if (requestId === chatLoadRequestRef.current) {
+            setIsChatDetailLoading(false);
+          }
+        }
+        return;
+      }
+
+      setChatSessionId("");
+      setActiveChatId(null);
+      setMessages([]);
+      setEditRuns([]);
+      setChatText("");
+    } catch (nextError) {
+      if (requestId === chatLoadRequestRef.current) {
+        window.alert(readError(nextError));
+      }
+    } finally {
+      if (requestId === chatLoadRequestRef.current) {
+        setIsChatSessionsLoading(false);
+      }
+    }
   }
 
   async function selectChatSession(sessionId: string) {
     if (sessionId === chatSessionId) return;
+    const requestId = ++chatLoadRequestRef.current;
     setChatText(activeTrip ? readChatDraft(activeTrip.id, sessionId) : "");
     setChatSessionId(sessionId);
     setActiveChatId(sessionId);
     setMessages([]);
     setEditRuns([]);
-    const detail = await getChatSession(sessionId);
-    setMessages(detail.messages);
-    setEditRuns(detail.editRuns);
-    if (activeTrip) {
-      pushAppPath(`/trips/${encodeURIComponent(activeTrip.id)}/chat/${encodeURIComponent(sessionId)}`);
+    setIsChatDetailLoading(true);
+    try {
+      const detail = await getChatSession(sessionId);
+      if (requestId !== chatLoadRequestRef.current) return;
+      setMessages(detail.messages);
+      setEditRuns(detail.editRuns);
+      if (activeTrip) {
+        pushAppPath(`/trips/${encodeURIComponent(activeTrip.id)}/chat/${encodeURIComponent(sessionId)}`);
+      }
+    } catch (nextError) {
+      if (requestId === chatLoadRequestRef.current) {
+        window.alert(readError(nextError));
+      }
+    } finally {
+      if (requestId === chatLoadRequestRef.current) {
+        setIsChatDetailLoading(false);
+      }
     }
   }
 
@@ -622,11 +874,13 @@ function App() {
       await refreshProviderStatuses();
       const title = selectedDay ? `Day ${selectedDay.dayNumber} 일정 조율` : `전체 일정 조율 ${chatSessions.length + 1}`;
       const session = await createChatSession(activeTrip.id, title);
+      ++chatLoadRequestRef.current;
       setChatSessions((current) => [session, ...current]);
       setChatSessionId(session.id);
       setActiveChatId(session.id);
       setMessages([]);
       setEditRuns([]);
+      setIsChatDetailLoading(false);
       setChatText("");
       pushAppPath(`/trips/${encodeURIComponent(activeTrip.id)}/chat/${encodeURIComponent(session.id)}`);
     } finally {
@@ -636,10 +890,12 @@ function App() {
 
   function openChatList() {
     if (!activeTrip) return;
+    ++chatLoadRequestRef.current;
     setChatSessionId("");
     setActiveChatId(null);
     setMessages([]);
     setEditRuns([]);
+    setIsChatDetailLoading(false);
     setChatText("");
     pushAppPath(`/trips/${encodeURIComponent(activeTrip.id)}`);
   }
@@ -779,17 +1035,24 @@ function App() {
   async function submitTrip(event: FormEvent) {
     event.preventDefault();
     const payload = normalizeTripForm(tripForm);
-    if (!workspaceId || !payload.title) return;
-    const trip = await createTrip(workspaceId, payload);
-    const setupTranscript = setupMessages.filter((message) => message.content.trim());
-    const importedSetup = setupTranscript.length > 1
-      ? await importSetupChatSession(trip.id, "초안 설계", setupTranscript)
-      : null;
-    setTrips((current) => [trip, ...current]);
-    setTripForm(emptyTripForm);
-    setSetupMessages([setupIntro]);
-    setSetupChatText("");
-    await enterTrip(trip.id, { chatSessionId: importedSetup?.session.id });
+    if (!workspaceId || !payload.title || isTripSubmitting) return;
+    setIsTripSubmitting(true);
+    try {
+      const trip = await createTrip(workspaceId, payload);
+      const setupTranscript = setupMessages.filter((message) => message.content.trim());
+      const importedSetup = setupTranscript.length > 1
+        ? await importSetupChatSession(trip.id, "초안 설계", setupTranscript)
+        : null;
+      setTrips((current) => [trip, ...current]);
+      setTripForm(emptyTripForm);
+      setSetupMessages([setupIntro]);
+      setSetupChatText("");
+      await enterTrip(trip.id, { chatSessionId: importedSetup?.session.id });
+    } catch (nextError) {
+      window.alert(readError(nextError));
+    } finally {
+      setIsTripSubmitting(false);
+    }
   }
 
   async function renameTrip(trip: Trip) {
@@ -829,12 +1092,22 @@ function App() {
   }
 
   function navigateToCreate() {
+    ++tripOpenRequestRef.current;
+    ++chatLoadRequestRef.current;
+    setIsTripOpening(false);
+    setIsChatSessionsLoading(false);
+    setIsChatDetailLoading(false);
     setTripState(null);
     setScreen("create");
     pushAppPath("/trips/new");
   }
 
   function navigateToSelect() {
+    ++tripOpenRequestRef.current;
+    ++chatLoadRequestRef.current;
+    setIsTripOpening(false);
+    setIsChatSessionsLoading(false);
+    setIsChatDetailLoading(false);
     setTripState(null);
     setScreen("select");
     pushAppPath("/");
@@ -1028,6 +1301,8 @@ function App() {
     const abortController = new AbortController();
     chatAbortControllerRef.current = abortController;
     chatStreamMutedRef.current = false;
+    chatActiveRunIdRef.current = null;
+    isChatSendingRef.current = true;
     clearChatStreamBuffer();
     setIsChatSending(true);
     setChatStreamLabel("요청을 보내는 중입니다.");
@@ -1051,12 +1326,14 @@ function App() {
     try {
       const run = await sendChatMessage(chatSessionId, content, abortController.signal);
       accepted = true;
+      chatActiveRunIdRef.current = run.runId;
       setMessages((current) => [
         ...current.filter((message) => message.id !== localUserMessage.id),
         run.userMessage
       ]);
     } catch (nextError) {
       if (isAbortError(nextError)) {
+        isChatSendingRef.current = false;
         setMessages((current) => [
           ...current.map((message) =>
             message.id === localUserMessage.id ? { ...message, status: "completed" } : message
@@ -1085,11 +1362,13 @@ function App() {
           createdAt: new Date().toISOString()
         }
       ]);
+      isChatSendingRef.current = false;
       setIsChatSending(false);
       setChatStreamingText("");
       setChatOperationPreview([]);
       setChatActivity(null);
       setChatRunStartedAtMs(null);
+      chatActiveRunIdRef.current = null;
     } finally {
       if (chatAbortControllerRef.current === abortController) {
         chatAbortControllerRef.current = null;
@@ -1098,7 +1377,9 @@ function App() {
         setChatStreamingText("");
         setChatOperationPreview([]);
         chatStreamMutedRef.current = false;
+        isChatSendingRef.current = false;
         setIsChatSending(false);
+        chatActiveRunIdRef.current = null;
       }
     }
   }
@@ -1108,10 +1389,12 @@ function App() {
     chatStreamMutedRef.current = true;
     chatAbortControllerRef.current?.abort();
     clearChatStreamBuffer();
+    isChatSendingRef.current = false;
     setIsChatSending(false);
     setChatStreamingText("");
     setChatActivity(null);
     setChatRunStartedAtMs(null);
+    chatActiveRunIdRef.current = null;
     setChatStreamLabel("중지됨");
     window.setTimeout(() => setChatStreamLabel(null), 1200);
 
@@ -1126,6 +1409,24 @@ function App() {
     return <ErrorScreen message={error ?? "앱을 불러오지 못했습니다."} onRetry={bootstrap} />;
   }
 
+  if (loadState === "loading") {
+    return (
+      <AppLoadingScreen
+        title="여행 작업실을 준비하는 중입니다"
+        detail="워크스페이스와 기본 설정을 확인하고 있습니다."
+      />
+    );
+  }
+
+  if (isTripOpening && !tripState) {
+    return (
+      <AppLoadingScreen
+        title="여행을 여는 중입니다"
+        detail="일정, 장소, 대화 상태를 불러오고 있습니다."
+      />
+    );
+  }
+
   if (screen === "create") {
     return (
       <SetupScreen
@@ -1134,6 +1435,7 @@ function App() {
         setupMessages={setupMessages}
         setupChatText={setupChatText}
         isSetupSending={isSetupSending}
+        isTripSubmitting={isTripSubmitting}
         onTripFormChange={setTripForm}
         onSetupChatTextChange={setSetupChatText}
         onSubmitSetupChat={submitSetupChat}
@@ -1206,6 +1508,8 @@ function App() {
         chatSessionId={chatSessionId}
         activeChatId={activeChatId}
         isChatSessionCreating={isChatSessionCreating}
+        isChatSessionsLoading={isChatSessionsLoading}
+        isChatDetailLoading={isChatDetailLoading}
         checkpoints={tripState.checkpoints}
         isRollingBack={isRollingBack}
         messages={messages}
@@ -1242,7 +1546,8 @@ function App() {
       workspaceSettingsForm={workspaceSettingsForm}
       providerStatuses={providerStatuses}
       trips={trips}
-      loading={loadState === "loading"}
+      loading={isTripsLoading}
+      openingTrip={isTripOpening}
       onWorkspaceChange={setWorkspaceId}
       onWorkspaceNameChange={setWorkspaceName}
       onCreateWorkspace={submitWorkspace}
@@ -1263,6 +1568,29 @@ function App() {
   );
 }
 
+function AppLoadingScreen(props: { title: string; detail?: string }) {
+  return (
+    <main className="app-page app-loading-page">
+      <section className="app-splash" aria-live="polite">
+        <img src="/app-icon.svg" alt="" />
+        <LoadingState title={props.title} detail={props.detail} />
+      </section>
+    </main>
+  );
+}
+
+function LoadingState(props: { title: string; detail?: string; compact?: boolean; className?: string }) {
+  return (
+    <div className={["loading-state", props.compact ? "compact" : "", props.className].filter(Boolean).join(" ")} role="status">
+      <span className="loading-spinner" aria-hidden="true">
+        <Loader2 size={props.compact ? 18 : 22} />
+      </span>
+      <strong>{props.title}</strong>
+      {props.detail ? <span>{props.detail}</span> : null}
+    </div>
+  );
+}
+
 function SelectScreen(props: {
   workspaces: Workspace[];
   workspaceId: string;
@@ -1272,6 +1600,7 @@ function SelectScreen(props: {
   providerStatuses: AiProviderStatus[];
   trips: Trip[];
   loading: boolean;
+  openingTrip: boolean;
   onWorkspaceChange: (workspaceId: string) => void;
   onWorkspaceNameChange: (name: string) => void;
   onCreateWorkspace: (event: FormEvent) => void;
@@ -1337,10 +1666,10 @@ function SelectScreen(props: {
 
           <div className="trip-list">
             {props.loading ? (
-              <div className="empty-state">
-                <CalendarDays size={22} />
-                <strong>여행 목록을 불러오는 중입니다</strong>
-              </div>
+              <LoadingState
+                title="여행 목록을 불러오는 중입니다"
+                detail="DB나 네트워크가 느리면 잠시 걸릴 수 있습니다."
+              />
             ) : null}
             {!props.loading && props.trips.length === 0 ? (
               <div className="empty-state">
@@ -1349,9 +1678,14 @@ function SelectScreen(props: {
                 <span>목적지와 날짜를 정하면 편집 화면이 만들어집니다.</span>
               </div>
             ) : null}
-            {props.trips.map((trip) => (
+            {!props.loading ? props.trips.map((trip) => (
               <article className="trip-row" key={trip.id}>
-                <button className="trip-row-main" type="button" onClick={() => props.onEnterTrip(trip.id)}>
+                <button
+                  className="trip-row-main"
+                  type="button"
+                  disabled={props.openingTrip}
+                  onClick={() => props.onEnterTrip(trip.id)}
+                >
                   <span className="trip-row-icon">
                     <MapPinned size={18} />
                   </span>
@@ -1372,7 +1706,7 @@ function SelectScreen(props: {
                   </button>
                 </span>
               </article>
-            ))}
+            )) : null}
           </div>
         </div>
         {props.settingsWorkspace ? (
@@ -1609,6 +1943,7 @@ function SetupScreen(props: {
   setupMessages: SetupAssistantMessage[];
   setupChatText: string;
   isSetupSending: boolean;
+  isTripSubmitting: boolean;
   onTripFormChange: (form: TripFormState) => void;
   onSetupChatTextChange: (text: string) => void;
   onSubmitSetupChat: (event: FormEvent) => void;
@@ -1660,8 +1995,8 @@ function SetupScreen(props: {
               <button className="secondary-button" type="button" onClick={props.onCancel}>
                 취소
               </button>
-              <button className="primary-button" type="submit" disabled={!props.tripForm.title.trim()}>
-                편집 시작
+              <button className="primary-button" type="submit" disabled={!props.tripForm.title.trim() || props.isTripSubmitting}>
+                {props.isTripSubmitting ? "편집 준비 중" : "편집 시작"}
               </button>
             </div>
           </form>
@@ -1827,6 +2162,8 @@ function EditorScreen(props: {
   chatSessionId: string;
   activeChatId: string | null;
   isChatSessionCreating: boolean;
+  isChatSessionsLoading: boolean;
+  isChatDetailLoading: boolean;
   checkpoints: CheckpointSummary[];
   isRollingBack: boolean;
   messages: ChatMessage[];
@@ -2650,7 +2987,7 @@ function EditorScreen(props: {
                 className="icon-button"
                 type="button"
                 aria-label="새 대화"
-                disabled={props.isChatSessionCreating}
+                disabled={props.isChatSessionCreating || props.isChatSessionsLoading}
                 onClick={createChatSession}
               >
                 <Plus size={17} />
@@ -2700,12 +3037,19 @@ function EditorScreen(props: {
                   onTouchStart={pauseChatAutoScroll}
                   onWheel={pauseChatAutoScroll}
                 >
-                  {props.messages.length === 0 ? (
+                  {props.isChatDetailLoading ? (
+                    <LoadingState
+                      title="대화 내용을 불러오는 중입니다"
+                      detail="느린 연결에서는 메시지와 변경 내역 동기화가 잠시 걸릴 수 있습니다."
+                      compact
+                    />
+                  ) : null}
+                  {!props.isChatDetailLoading && props.messages.length === 0 ? (
                     <div className="assistant-message">
                       <p>전체 일정 조정, 날짜별 권역 변경, 장소 추가 요청을 이곳에서 이어갈 수 있습니다.</p>
                     </div>
                   ) : null}
-                  {props.messages.map((message, index) => (
+                  {!props.isChatDetailLoading ? props.messages.map((message, index) => (
                     <ChatMessageBubble
                       copied={copiedMessageId === message.id}
                       editRuns={props.editRuns}
@@ -2715,7 +3059,7 @@ function EditorScreen(props: {
                       onCopyMessage={(targetMessage) => void copyChatMessageMarkdown(targetMessage)}
                       previousUserMessage={findPreviousUserMessage(props.messages, message.id)}
                     />
-                  ))}
+                  )) : null}
                   {props.isChatSending ? (
                     <div className={props.chatStreamingText ? "assistant-message streaming" : "assistant-message pending"}>
                       {props.chatStreamingText ? (
@@ -2755,6 +3099,7 @@ function EditorScreen(props: {
                   onChange={(event) => props.onChatTextChange(event.target.value)}
                   onKeyDown={(event) => submitOnCommandEnter(event)}
                   placeholder={isMobileInput ? "메시지를 입력하세요. 줄바꿈은 Return, 전송은 버튼" : `Enter 전송, Shift/${lineBreakModifier}+Enter 줄바꿈`}
+                  disabled={props.isChatDetailLoading}
                   rows={3}
                 />
                 {props.isChatSending ? (
@@ -2762,7 +3107,7 @@ function EditorScreen(props: {
                     <X size={16} />
                   </button>
                 ) : (
-                  <button className="send-button" type="submit" disabled={!props.chatText.trim()}>
+                  <button className="send-button" type="submit" disabled={props.isChatDetailLoading || !props.chatText.trim()}>
                     <Send size={16} />
                   </button>
                 )}
@@ -2773,6 +3118,7 @@ function EditorScreen(props: {
               sessions={props.chatSessions}
               checkpoints={props.checkpoints}
               creating={props.isChatSessionCreating}
+              loading={props.isChatSessionsLoading}
               rollingBack={props.isRollingBack}
               onCreateSession={createChatSession}
               onSelectSession={selectChatSession}
@@ -2985,6 +3331,7 @@ function ChatHome(props: {
   sessions: ChatSession[];
   checkpoints: CheckpointSummary[];
   creating: boolean;
+  loading: boolean;
   rollingBack: boolean;
   onCreateSession: () => void;
   onSelectSession: (sessionId: string) => void;
@@ -3010,7 +3357,7 @@ function ChatHome(props: {
             <button
               className="primary-button small-action"
               type="button"
-              disabled={props.creating}
+              disabled={props.creating || props.loading}
               onClick={props.onCreateSession}
             >
               <Plus size={15} />
@@ -3019,13 +3366,20 @@ function ChatHome(props: {
           </div>
         </div>
         <div className="chat-session-list">
-          {props.sessions.length === 0 ? (
+          {props.loading ? (
+            <LoadingState
+              title="대화 목록을 불러오는 중입니다"
+              detail="세션 목록과 최근 변경 기록을 확인하고 있습니다."
+              compact
+            />
+          ) : null}
+          {!props.loading && props.sessions.length === 0 ? (
             <div className="empty-state compact">
               <strong>아직 대화가 없습니다</strong>
               <span>새 대화를 만들고 여행 계획을 조율하세요.</span>
             </div>
           ) : null}
-          {props.sessions.map((session) => (
+          {!props.loading ? props.sessions.map((session) => (
             <article className="chat-session-row" key={session.id}>
               <button className="chat-session-main" type="button" onClick={() => props.onSelectSession(session.id)}>
                 <span>
@@ -3046,7 +3400,7 @@ function ChatHome(props: {
                 </button>
               </span>
             </article>
-          ))}
+          )) : null}
         </div>
       </section>
 
@@ -3820,6 +4174,10 @@ function parseEventTimeMs(value: string | null | undefined): number | null {
   if (!value) return null;
   const time = new Date(value).getTime();
   return Number.isFinite(time) ? time : null;
+}
+
+function isTerminalChatRunStatus(status: string): boolean {
+  return status === "applied" || status === "completed" || status === "failed" || status === "cancelled";
 }
 
 function isChatLogNearBottom(element: HTMLElement, threshold = 96): boolean {

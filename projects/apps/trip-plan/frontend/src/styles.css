@@ -58,6 +58,33 @@ button:disabled {
   padding: 20px;
 }
 
+.app-loading-page {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+}
+
+.app-splash {
+  display: grid;
+  width: min(360px, calc(100vw - 40px));
+  place-items: center;
+  gap: 16px;
+  text-align: center;
+}
+
+.app-splash img {
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+}
+
+.app-splash .loading-state {
+  border: 0;
+  background: transparent;
+  padding: 0;
+}
+
 .select-shell,
 .setup-shell {
   min-height: calc(100vh - 40px);
@@ -522,7 +549,8 @@ button:disabled {
 }
 
 .empty-state,
-.error-card {
+.error-card,
+.loading-state {
   display: grid;
   place-items: center;
   gap: 8px;
@@ -537,6 +565,45 @@ button:disabled {
   place-items: start;
   padding: 14px;
   text-align: left;
+}
+
+.loading-state {
+  color: var(--secondary);
+}
+
+.loading-state strong {
+  color: var(--text);
+}
+
+.loading-state span:not(.loading-spinner) {
+  color: var(--secondary);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.loading-state.compact {
+  place-items: start;
+  padding: 14px;
+  text-align: left;
+}
+
+.loading-spinner {
+  display: inline-flex;
+  width: 28px;
+  height: 28px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--teal-soft);
+  color: var(--teal);
+}
+
+.loading-spinner svg {
+  animation: loading-spin 0.9s linear infinite;
+}
+
+.chat-log .loading-state {
+  margin: auto 0;
 }
 
 .setup-shell {
@@ -2287,6 +2354,12 @@ button:disabled {
   }
   to {
     background-position-x: 8px;
+  }
+}
+
+@keyframes loading-spin {
+  to {
+    transform: rotate(360deg);
   }
 }
 
