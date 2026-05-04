@@ -233,7 +233,7 @@ private class OpenAiStyleChatClient(
             "stream" to stream,
             "messages" to listOf(
                 mapOf("role" to "system", "content" to promptBuilder.developerInstructions()),
-                mapOf("role" to "user", "content" to promptBuilder.buildStreamingTurnPrompt(request)),
+                mapOf("role" to "user", "content" to userMessageContent(request)),
             ),
         )
 
@@ -246,6 +246,23 @@ private class OpenAiStyleChatClient(
 
         config.headers.forEach { (name, value) -> builder.header(name, value) }
         return builder.build()
+    }
+
+    private fun userMessageContent(request: AiChatRequest): Any {
+        val prompt = promptBuilder.buildStreamingTurnPrompt(request)
+        if (request.inputImages.isEmpty()) return prompt
+        return buildList {
+            add(mapOf("type" to "text", "text" to prompt))
+            request.inputImages.forEach { image ->
+                val url = image.url ?: return@forEach
+                add(
+                    mapOf(
+                        "type" to "image_url",
+                        "image_url" to mapOf("url" to url),
+                    ),
+                )
+            }
+        }
     }
 
     private fun responseBodyText(response: HttpResponse<java.io.InputStream>): String =

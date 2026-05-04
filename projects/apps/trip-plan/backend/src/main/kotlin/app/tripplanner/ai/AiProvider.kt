@@ -9,12 +9,20 @@ data class AiChatRequest(
     val tripId: String,
     val chatSessionId: String,
     val content: String,
+    val inputImages: List<AiInputImage> = emptyList(),
     val tripState: TripStateDto,
     val priorMessages: List<AiPriorMessage> = emptyList(),
     val model: String?,
     val effort: String?,
     val settingsJson: String,
     val providerSession: AiProviderSessionDto?,
+)
+
+data class AiInputImage(
+    val fileName: String,
+    val contentType: String,
+    val localPath: String? = null,
+    val url: String? = null,
 )
 
 data class AiPriorMessage(

@@ -2,6 +2,7 @@ package app.tripplanner.common
 
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
+import org.springframework.web.multipart.MaxUploadSizeExceededException
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
 
@@ -42,6 +43,17 @@ class ApiExceptionHandler {
                 ErrorResponse(
                     error = "upstream_unavailable",
                     message = error.message ?: "Upstream service is unavailable.",
+                ),
+            )
+
+    @ExceptionHandler(MaxUploadSizeExceededException::class)
+    fun handleMaxUploadSizeExceeded(error: MaxUploadSizeExceededException): ResponseEntity<ErrorResponse> =
+        ResponseEntity
+            .status(HttpStatus.PAYLOAD_TOO_LARGE)
+            .body(
+                ErrorResponse(
+                    error = "payload_too_large",
+                    message = "Attachment is too large.",
                 ),
             )
 }

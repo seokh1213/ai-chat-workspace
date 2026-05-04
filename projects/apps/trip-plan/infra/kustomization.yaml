@@ -4,6 +4,7 @@ namespace: dev
 resources:
   - secret.yaml
   - postgres.yaml
+  - model-attachments.yaml
   - codex.yaml
   - app.yaml
   - ingress.yaml

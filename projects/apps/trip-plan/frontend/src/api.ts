@@ -1,6 +1,7 @@
 import type {
   AiProviderStatus,
   CancelChatRunResponse,
+  ChatAttachment,
   ChatMessage,
   ChatMessageRun,
   ChatSession,
@@ -194,13 +195,36 @@ export function getChatSession(sessionId: string): Promise<ChatSessionDetail> {
 export function sendChatMessage(
   sessionId: string,
   content: string,
+  attachmentIds: string[] = [],
   signal?: AbortSignal
 ): Promise<ChatMessageRun> {
   return requestJson<ChatMessageRun>(`/api/chat-sessions/${sessionId}/messages`, {
     method: "POST",
-    body: JSON.stringify({ content }),
+    body: JSON.stringify({ content, attachmentIds }),
     signal
   });
+}
+
+export async function uploadChatAttachment(sessionId: string, file: File): Promise<ChatAttachment> {
+  const body = new FormData();
+  body.append("file", file);
+  const response = await fetch(`/api/chat-sessions/${sessionId}/attachments`, {
+    method: "POST",
+    body
+  });
+  if (!response.ok) {
+    throw new Error(await response.text());
+  }
+  return response.json() as Promise<ChatAttachment>;
+}
+
+export async function deleteChatAttachment(sessionId: string, attachmentId: string): Promise<void> {
+  const response = await fetch(`/api/chat-sessions/${sessionId}/attachments/${attachmentId}`, {
+    method: "DELETE"
+  });
+  if (!response.ok) {
+    throw new Error(await response.text());
+  }
 }
 
 export function cancelCurrentChatRun(sessionId: string): Promise<CancelChatRunResponse> {

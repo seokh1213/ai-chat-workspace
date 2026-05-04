@@ -11,6 +11,10 @@ spring:
   flyway:
     enabled: true
     locations: classpath:db/migration
+  servlet:
+    multipart:
+      max-file-size: ${TRIP_PLANNER_ATTACHMENT_MAX_FILE_SIZE:20MB}
+      max-request-size: ${TRIP_PLANNER_ATTACHMENT_MAX_REQUEST_SIZE:80MB}
 
 server:
   port: ${PORT:8081}
@@ -31,6 +35,10 @@ management:
         enabled: true
 
 app:
+  chat:
+    attachments:
+      model-local-dir: ${TRIP_PLANNER_MODEL_ATTACHMENT_DIR:}
+      model-base-url: ${TRIP_PLANNER_MODEL_ATTACHMENT_BASE_URL:}
   seed:
     enabled: false
     locations: classpath*:db/seed/*.sql

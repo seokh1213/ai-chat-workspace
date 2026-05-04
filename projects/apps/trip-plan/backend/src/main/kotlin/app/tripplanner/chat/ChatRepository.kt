@@ -103,6 +103,7 @@ class ChatRepository(
             .param("sessionId", sessionId)
             .query(::messageRow)
             .list()
+            .let(::withAttachments)
 
     fun findLatestUnansweredUserMessage(sessionId: String): ChatMessageDto? =
         jdbcClient
@@ -131,6 +132,7 @@ class ChatRepository(
             .query(::messageRow)
             .optional()
             .orElse(null)
+            ?.let { message -> withAttachments(listOf(message)).first() }
 
     fun insertMessage(message: ChatMessageDto) {
         jdbcClient
@@ -152,6 +154,110 @@ class ChatRepository(
             .param("createdAt", message.createdAt)
             .update()
     }
+
+    fun insertAttachment(attachment: ChatAttachmentDto, checksumSha256: String, content: ByteArray) {
+        jdbcClient
+            .sql(
+                """
+                INSERT INTO chat_files.chat_attachments (
+                  id, chat_session_id, chat_message_id, original_filename, content_type, byte_size,
+                  kind, checksum_sha256, text_preview, status, created_at, updated_at
+                ) VALUES (
+                  :id, :chatSessionId, :chatMessageId, :fileName, :contentType, :byteSize,
+                  :kind, :checksumSha256, :textPreview, 'ready', :createdAt, :createdAt
+                )
+                """.trimIndent(),
+            )
+            .param("id", attachment.id)
+            .param("chatSessionId", attachment.chatSessionId)
+            .param("chatMessageId", attachment.chatMessageId)
+            .param("fileName", attachment.fileName)
+            .param("contentType", attachment.contentType)
+            .param("byteSize", attachment.byteSize)
+            .param("kind", attachment.kind)
+            .param("checksumSha256", checksumSha256)
+            .param("textPreview", attachment.textPreview)
+            .param("createdAt", attachment.createdAt)
+            .update()
+
+        jdbcClient
+            .sql(
+                """
+                INSERT INTO chat_files.chat_attachment_blobs (attachment_id, content)
+                VALUES (:attachmentId, :content)
+                """.trimIndent(),
+            )
+            .param("attachmentId", attachment.id)
+            .param("content", content)
+            .update()
+    }
+
+    fun findAttachment(attachmentId: String): ChatAttachmentDto? =
+        jdbcClient
+            .sql(AttachmentSelectSql + " WHERE id = :attachmentId")
+            .param("attachmentId", attachmentId)
+            .query(::attachmentRow)
+            .optional()
+            .orElse(null)
+
+    fun findAttachmentBlob(attachmentId: String): ByteArray? =
+        jdbcClient
+            .sql("SELECT content FROM chat_files.chat_attachment_blobs WHERE attachment_id = :attachmentId")
+            .param("attachmentId", attachmentId)
+            .query { rs, _ -> rs.getBytes("content") }
+            .optional()
+            .orElse(null)
+
+    fun findAttachments(sessionId: String, attachmentIds: List<String>): List<ChatAttachmentDto> {
+        if (attachmentIds.isEmpty()) return emptyList()
+        return jdbcClient
+            .sql(
+                """
+                $AttachmentSelectSql
+                WHERE chat_session_id = :sessionId
+                  AND id IN (:attachmentIds)
+                ORDER BY created_at ASC
+                """.trimIndent(),
+            )
+            .param("sessionId", sessionId)
+            .param("attachmentIds", attachmentIds)
+            .query(::attachmentRow)
+            .list()
+    }
+
+    fun attachAttachmentsToMessage(sessionId: String, messageId: String, attachmentIds: List<String>, updatedAt: String): Int {
+        if (attachmentIds.isEmpty()) return 0
+        return jdbcClient
+            .sql(
+                """
+                UPDATE chat_files.chat_attachments
+                SET chat_message_id = :messageId,
+                    updated_at = :updatedAt
+                WHERE chat_session_id = :sessionId
+                  AND id IN (:attachmentIds)
+                  AND chat_message_id IS NULL
+                """.trimIndent(),
+            )
+            .param("sessionId", sessionId)
+            .param("messageId", messageId)
+            .param("attachmentIds", attachmentIds)
+            .param("updatedAt", updatedAt)
+            .update()
+    }
+
+    fun deleteUnsentAttachment(sessionId: String, attachmentId: String): Boolean =
+        jdbcClient
+            .sql(
+                """
+                DELETE FROM chat_files.chat_attachments
+                WHERE chat_session_id = :sessionId
+                  AND id = :attachmentId
+                  AND chat_message_id IS NULL
+                """.trimIndent(),
+            )
+            .param("sessionId", sessionId)
+            .param("attachmentId", attachmentId)
+            .update() > 0
 
     fun insertAiEditRun(run: AiEditRunDto) {
         jdbcClient
@@ -224,6 +330,20 @@ class ChatRepository(
             createdAt = rs.getString("created_at"),
         )
 
+    private fun attachmentRow(rs: ResultSet, rowNumber: Int): ChatAttachmentDto =
+        ChatAttachmentDto(
+            id = rs.getString("id"),
+            chatSessionId = rs.getString("chat_session_id"),
+            chatMessageId = rs.getString("chat_message_id"),
+            fileName = rs.getString("original_filename"),
+            contentType = rs.getString("content_type"),
+            byteSize = rs.getLong("byte_size"),
+            kind = rs.getString("kind"),
+            downloadUrl = "/api/chat-attachments/${rs.getString("id")}/content",
+            textPreview = rs.getString("text_preview"),
+            createdAt = rs.getString("created_at"),
+        )
+
     private fun aiEditRunRow(rs: ResultSet, rowNumber: Int): AiEditRunDto =
         AiEditRunDto(
             id = rs.getString("id"),
@@ -242,7 +362,34 @@ class ChatRepository(
             durationMs = rs.getNullableLong("duration_ms"),
             createdAt = rs.getString("created_at"),
         )
+
+    private fun withAttachments(messages: List<ChatMessageDto>): List<ChatMessageDto> {
+        if (messages.isEmpty()) return messages
+        val messageIds = messages.map(ChatMessageDto::id)
+        val attachments = jdbcClient
+            .sql(
+                """
+                $AttachmentSelectSql
+                WHERE chat_message_id IN (:messageIds)
+                ORDER BY created_at ASC
+                """.trimIndent(),
+            )
+            .param("messageIds", messageIds)
+            .query(::attachmentRow)
+            .list()
+            .groupBy { attachment -> attachment.chatMessageId }
+
+        return messages.map { message ->
+            message.copy(attachments = attachments[message.id] ?: emptyList())
+        }
+    }
 }
+
+private const val AttachmentSelectSql = """
+SELECT id, chat_session_id, chat_message_id, original_filename, content_type, byte_size,
+       kind, text_preview, created_at
+FROM chat_files.chat_attachments
+"""
 
 private fun JdbcClient.StatementSpec.bindSession(session: ChatSessionDto): JdbcClient.StatementSpec =
     param("id", session.id)

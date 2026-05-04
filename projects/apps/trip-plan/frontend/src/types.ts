@@ -163,6 +163,20 @@ export type ChatMessage = {
   status: string;
   metadataJson: string;
   createdAt: string;
+  attachments: ChatAttachment[];
+};
+
+export type ChatAttachment = {
+  id: string;
+  chatSessionId: string;
+  chatMessageId: string | null;
+  fileName: string;
+  contentType: string;
+  byteSize: number;
+  kind: "image" | "file" | string;
+  downloadUrl: string;
+  textPreview: string | null;
+  createdAt: string;
 };
 
 export type ChatSessionDetail = {

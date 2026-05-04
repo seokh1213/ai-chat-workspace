@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: trip-plan-model-attachments
+  namespace: dev
+  labels:
+    app.kubernetes.io/name: trip-plan-model-attachments
+    app.kubernetes.io/part-of: trip-plan
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi

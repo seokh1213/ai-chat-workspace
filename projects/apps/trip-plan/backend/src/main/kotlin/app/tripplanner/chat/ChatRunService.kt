@@ -1,6 +1,7 @@
 package app.tripplanner.chat
 
 import app.tripplanner.ai.AiChatRequest
+import app.tripplanner.ai.AiInputImage
 import app.tripplanner.ai.AiPriorMessage
 import app.tripplanner.ai.AiProviderActivity
 import app.tripplanner.ai.AiProviderRegistry
@@ -22,9 +23,14 @@ import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.slf4j.LoggerFactory
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
+import java.nio.file.Files
+import java.nio.file.Path
+import java.nio.file.StandardOpenOption
 import java.time.Duration
 import java.time.OffsetDateTime
+import java.util.Base64
 import java.util.UUID
 
 @Service
@@ -36,6 +42,8 @@ class ChatRunService(
     private val eventBroker: ChatEventBroker,
     private val runRegistry: ChatRunRegistry,
     private val clockProvider: ClockProvider,
+    @param:Value("\${app.chat.attachments.model-local-dir:}") private val modelAttachmentLocalDir: String,
+    @param:Value("\${app.chat.attachments.model-base-url:}") private val modelAttachmentBaseUrl: String,
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
     private val objectMapper = jacksonObjectMapper()
@@ -135,7 +143,22 @@ class ChatRunService(
     fun addMessage(sessionId: String, request: CreateChatMessageRequest): ChatMessageRunDto {
         val session = repository.findSession(sessionId) ?: throw NoSuchElementException("Chat session not found.")
         val content = request.content.trim()
-        require(content.isNotEmpty()) { "Message content must not be blank." }
+        val attachmentIds = request.attachmentIds
+            .map(String::trim)
+            .filter(String::isNotEmpty)
+            .distinct()
+        require(content.isNotEmpty() || attachmentIds.isNotEmpty()) { "Message content or attachments are required." }
+        require(attachmentIds.size <= MaxAttachmentsPerMessage) {
+            "Too many attachments. Maximum is $MaxAttachmentsPerMessage per message."
+        }
+        val attachments = repository.findAttachments(sessionId = sessionId, attachmentIds = attachmentIds)
+        require(attachments.size == attachmentIds.size) { "One or more attachments were not found." }
+        require(attachments.all { attachment -> attachment.chatMessageId == null }) {
+            "One or more attachments have already been sent."
+        }
+        val orderedAttachments = attachmentIds.map { attachmentId ->
+            attachments.first { attachment -> attachment.id == attachmentId }
+        }
 
         val now = clockProvider.nowText()
         val runId = "run_${UUID.randomUUID()}"
@@ -145,11 +168,21 @@ class ChatRunService(
             role = "user",
             content = content,
             status = "completed",
-            metadataJson = "{}",
+            metadataJson = objectMapper.writeValueAsString(mapOf("attachmentIds" to attachmentIds)),
             createdAt = now,
+        )
+        val savedUserMessage = userMessage.copy(
+            attachments = orderedAttachments.map { attachment -> attachment.copy(chatMessageId = userMessage.id) },
         )
 
         repository.insertMessage(userMessage)
+        val attachedCount = repository.attachAttachmentsToMessage(
+            sessionId = sessionId,
+            messageId = userMessage.id,
+            attachmentIds = attachmentIds,
+            updatedAt = now,
+        )
+        require(attachedCount == attachmentIds.size) { "One or more attachments could not be linked." }
         repository.touchSession(sessionId, now)
         runRegistry.start(
             sessionId = sessionId,
@@ -157,30 +190,40 @@ class ChatRunService(
             startedAt = now,
             message = ChatRunStartedMessage,
         )
+        publishUserMessageCreated(sessionId = sessionId, message = savedUserMessage)
         publishRunStarted(session = session, runId = runId, createdAt = now)
         logger.info(
-            "Chat run accepted runId={} sessionId={} tripId={} provider={} contentChars={}",
+            "Chat run accepted runId={} sessionId={} tripId={} provider={} contentChars={} attachments={}",
             runId,
             sessionId,
             session.tripId,
             session.provider,
             content.length,
+            attachmentIds.size,
         )
 
         runScope.launch {
             try {
-                addMessageWithRun(session = session, content = content, userMessage = userMessage, runId = runId)
+                addMessageWithRun(session = session, content = content, userMessage = savedUserMessage, runId = runId)
             } catch (error: RuntimeException) {
                 logger.warn("Chat run failed unexpectedly: {}", runId, error)
                 if (!runRegistry.isCancelled(runId)) {
-                    failedProviderPair(session = session, userMessage = userMessage, runId = runId, error = error)
+                    failedProviderPair(session = session, userMessage = savedUserMessage, runId = runId, error = error)
                 }
             } finally {
                 runRegistry.finish(sessionId = sessionId, runId = runId)
             }
         }
 
-        return ChatMessageRunDto(runId = runId, userMessage = userMessage)
+        return ChatMessageRunDto(runId = runId, userMessage = savedUserMessage)
+    }
+
+    private fun publishUserMessageCreated(sessionId: String, message: ChatMessageDto) {
+        eventBroker.publish(
+            sessionId = sessionId,
+            eventName = "user.message.created",
+            data = message,
+        )
     }
 
     private fun addMessageWithRun(
@@ -190,7 +233,7 @@ class ChatRunService(
         runId: String,
     ): ChatMessagePairDto {
         val providerResult = try {
-            runProvider(session = session, content = content, runId = runId)
+            runProvider(session = session, userMessage = userMessage, runId = runId)
         } catch (error: RuntimeException) {
             if (runRegistry.isCancelled(runId)) {
                 return cancelledRunPair(session = session, userMessage = userMessage, runId = runId)
@@ -227,7 +270,7 @@ class ChatRunService(
         return applyProviderResult(
             session = session,
             userMessage = userMessage,
-            content = content,
+            content = content.ifBlank { "첨부 파일 기반 요청" },
             runId = runId,
             providerResult = providerResult,
             providerSession = providerSession,
@@ -462,7 +505,7 @@ class ChatRunService(
         )
     }
 
-    private fun runProvider(session: ChatSessionDto, content: String, runId: String): AiProviderResult {
+    private fun runProvider(session: ChatSessionDto, userMessage: ChatMessageDto, runId: String): AiProviderResult {
         val provider = providerRegistry.requireProvider(session.provider)
         val tripState = tripService.state(session.tripId)
         val providerSession = providerSessionRepository.find(
@@ -472,12 +515,14 @@ class ChatRunService(
         val priorMessages = repository.findMessages(session.id)
             .dropLast(1)
             .takeLast(12)
-            .map { message -> AiPriorMessage(role = message.role, content = message.content) }
+            .map { message -> AiPriorMessage(role = message.role, content = providerContent(message)) }
+        val inputImages = modelInputImages(userMessage)
         val request = AiChatRequest(
             runId = runId,
             tripId = session.tripId,
             chatSessionId = session.id,
-            content = content,
+            content = providerContent(userMessage, currentTurnImageInputs = inputImages.isNotEmpty()),
+            inputImages = inputImages,
             tripState = tripState,
             priorMessages = priorMessages,
             model = session.model,
@@ -487,12 +532,13 @@ class ChatRunService(
         )
 
         logger.info(
-            "Chat run provider start runId={} sessionId={} tripId={} provider={} priorMessages={} days={} places={} items={}",
+            "Chat run provider start runId={} sessionId={} tripId={} provider={} priorMessages={} inputImages={} days={} places={} items={}",
             runId,
             session.id,
             session.tripId,
             session.provider,
             priorMessages.size,
+            inputImages.size,
             tripState.days.size,
             tripState.places.size,
             tripState.itineraryItems.size,
@@ -590,6 +636,88 @@ class ChatRunService(
             )
             result
         }
+    }
+
+    private fun modelInputImages(message: ChatMessageDto): List<AiInputImage> =
+        message.attachments
+            .filter { attachment -> attachment.kind == "image" }
+            .mapNotNull { attachment ->
+                val contentType = normalizedImageContentType(attachment.contentType)
+                val localPath = modelAttachmentLocalPath(message = message, attachment = attachment, contentType = contentType)
+                if (localPath != null) {
+                    return@mapNotNull AiInputImage(
+                        fileName = attachment.fileName,
+                        contentType = contentType,
+                        localPath = localPath,
+                    )
+                }
+                val url = modelAttachmentUrl(attachment) ?: imageDataUrl(message = message, attachment = attachment, contentType = contentType)
+                    ?: return@mapNotNull null
+                AiInputImage(
+                    fileName = attachment.fileName,
+                    contentType = contentType,
+                    url = url,
+                )
+            }
+
+    private fun modelAttachmentLocalPath(message: ChatMessageDto, attachment: ChatAttachmentDto, contentType: String): String? {
+        val directory = modelAttachmentLocalDir.trim().takeIf(String::isNotBlank) ?: return null
+        val content = attachmentContentForModel(message = message, attachment = attachment) ?: return null
+        return runCatching {
+            val root = Path.of(directory).toAbsolutePath().normalize()
+            Files.createDirectories(root)
+            val target = root.resolve("${attachment.id}.${imageFileExtension(contentType)}").normalize()
+            require(target.parent == root) { "Attachment path escaped model attachment directory." }
+            Files.write(
+                target,
+                content,
+                StandardOpenOption.CREATE,
+                StandardOpenOption.TRUNCATE_EXISTING,
+                StandardOpenOption.WRITE,
+            )
+            target.toString()
+        }.onFailure { error ->
+            logger.warn(
+                "Chat image attachment could not be staged for local model input messageId={} attachmentId={} directory={}: {}",
+                message.id,
+                attachment.id,
+                directory,
+                error.message,
+            )
+        }.getOrNull()
+    }
+
+    private fun modelAttachmentUrl(attachment: ChatAttachmentDto): String? {
+        val baseUrl = modelAttachmentBaseUrl.trim().trimEnd('/').takeIf(String::isNotBlank) ?: return null
+        val path = attachment.downloadUrl.takeIf(String::isNotBlank) ?: "/api/chat-attachments/${attachment.id}/content"
+        return "$baseUrl$path"
+    }
+
+    private fun imageDataUrl(message: ChatMessageDto, attachment: ChatAttachmentDto, contentType: String): String? {
+        val content = attachmentContentForModel(message = message, attachment = attachment) ?: return null
+        return "data:$contentType;base64,${Base64.getEncoder().encodeToString(content)}"
+    }
+
+    private fun attachmentContentForModel(message: ChatMessageDto, attachment: ChatAttachmentDto): ByteArray? {
+        val content = repository.findAttachmentBlob(attachment.id)
+        if (content == null) {
+            logger.warn(
+                "Chat image attachment content missing messageId={} attachmentId={}",
+                message.id,
+                attachment.id,
+            )
+            return null
+        }
+        if (content.size.toLong() > MaxModelImageBytes) {
+            logger.warn(
+                "Chat image attachment skipped for model input messageId={} attachmentId={} bytes={}",
+                message.id,
+                attachment.id,
+                content.size,
+            )
+            return null
+        }
+        return content
     }
 
     private fun publishRunActivity(session: ChatSessionDto, runId: String, activity: AiProviderActivity) {
@@ -691,7 +819,55 @@ class ChatRunService(
 }
 
 private const val ChatRunStartedMessage = "요청을 분석하는 중입니다."
+private const val MaxAttachmentsPerMessage = 8
+private const val MaxModelImageBytes = 20L * 1024L * 1024L
 private val InterruptedRunGracePeriod: Duration = Duration.ofSeconds(10)
+
+private fun normalizedImageContentType(contentType: String): String {
+    val normalized = contentType.substringBefore(';').trim().lowercase()
+    return normalized
+        .takeIf { value -> value.startsWith("image/") && value.all { char -> char.isLetterOrDigit() || char in setOf('/', '.', '+', '-') } }
+        ?: "image/png"
+}
+
+private fun imageFileExtension(contentType: String): String =
+    when (contentType) {
+        "image/jpeg", "image/jpg" -> "jpg"
+        "image/webp" -> "webp"
+        "image/gif" -> "gif"
+        else -> "png"
+    }
+
+private fun providerContent(message: ChatMessageDto, currentTurnImageInputs: Boolean = false): String {
+    if (message.attachments.isEmpty()) return message.content
+
+    return buildString {
+        append(message.content.ifBlank { "첨부 파일을 참고해 주세요." })
+        append("\n\n[첨부 파일]\n")
+        message.attachments.forEachIndexed { index, attachment ->
+            append("${index + 1}. ${attachment.fileName} ")
+            append("(${attachment.kind}, ${attachment.contentType}, ${formatAttachmentSize(attachment.byteSize)})")
+            if (attachment.kind == "image") {
+                append(if (currentTurnImageInputs) " - 별도 이미지 입력으로 함께 전달됨" else " - 이미지 첨부")
+            }
+            append("\n")
+            attachment.textPreview?.takeIf(String::isNotBlank)?.let { preview ->
+                append("   내용 미리보기:\n")
+                preview
+                    .lineSequence()
+                    .take(80)
+                    .forEach { line -> append("   > ${line.take(500)}\n") }
+            }
+        }
+    }
+}
+
+private fun formatAttachmentSize(size: Long): String {
+    if (size < 1024) return "${size}B"
+    val kib = size / 1024.0
+    if (kib < 1024) return "%.1fKB".format(kib)
+    return "%.1fMB".format(kib / 1024.0)
+}
 
 private fun elapsedMillis(startedNanos: Long): Long =
     Duration.ofNanos(System.nanoTime() - startedNanos).toMillis().coerceAtLeast(0L)

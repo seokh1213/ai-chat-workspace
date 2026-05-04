@@ -4,10 +4,17 @@ import app.tripplanner.common.ClockProvider
 import app.tripplanner.trip.TripRepository
 import app.tripplanner.workspace.WorkspaceRepository
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import org.springframework.http.ContentDisposition
+import org.springframework.http.HttpHeaders
+import org.springframework.http.MediaType
+import org.springframework.http.ResponseEntity
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.web.multipart.MultipartFile
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter
+import java.security.MessageDigest
 import java.time.OffsetDateTime
+import java.util.HexFormat
 import java.util.UUID
 
 @Service
@@ -97,6 +104,67 @@ class ChatService(
     }
 
     @Transactional
+    fun uploadAttachment(sessionId: String, file: MultipartFile): ChatAttachmentDto {
+        repository.findSession(sessionId) ?: throw NoSuchElementException("Chat session not found.")
+        require(!file.isEmpty) { "Attachment must not be empty." }
+        require(file.size <= MaxAttachmentBytes) {
+            "Attachment is too large. Maximum size is ${MaxAttachmentBytes / 1024 / 1024}MB."
+        }
+
+        val content = file.bytes
+        val now = clockProvider.nowText()
+        val contentType = file.contentType?.takeIf(String::isNotBlank) ?: MediaType.APPLICATION_OCTET_STREAM_VALUE
+        val fileName = sanitizeFileName(file.originalFilename)
+        val attachment = ChatAttachmentDto(
+            id = "att_${UUID.randomUUID()}",
+            chatSessionId = sessionId,
+            chatMessageId = null,
+            fileName = fileName,
+            contentType = contentType,
+            byteSize = content.size.toLong(),
+            kind = if (contentType.startsWith("image/")) "image" else "file",
+            downloadUrl = "",
+            textPreview = textPreview(fileName = fileName, contentType = contentType, content = content),
+            createdAt = now,
+        )
+
+        repository.insertAttachment(
+            attachment = attachment,
+            checksumSha256 = sha256(content),
+            content = content,
+        )
+        return attachment.copy(downloadUrl = "/api/chat-attachments/${attachment.id}/content")
+    }
+
+    @Transactional(readOnly = true)
+    fun attachmentContent(attachmentId: String): ResponseEntity<ByteArray> {
+        val attachment = repository.findAttachment(attachmentId) ?: throw NoSuchElementException("Attachment not found.")
+        val content = repository.findAttachmentBlob(attachmentId) ?: throw NoSuchElementException("Attachment content not found.")
+        val contentType = runCatching { MediaType.parseMediaType(attachment.contentType) }
+            .getOrDefault(MediaType.APPLICATION_OCTET_STREAM)
+
+        return ResponseEntity
+            .ok()
+            .contentType(contentType)
+            .header(
+                HttpHeaders.CONTENT_DISPOSITION,
+                ContentDisposition.inline()
+                    .filename(attachment.fileName, Charsets.UTF_8)
+                    .build()
+                    .toString(),
+            )
+            .body(content)
+    }
+
+    @Transactional
+    fun deleteAttachment(sessionId: String, attachmentId: String) {
+        repository.findSession(sessionId) ?: throw NoSuchElementException("Chat session not found.")
+        if (!repository.deleteUnsentAttachment(sessionId = sessionId, attachmentId = attachmentId)) {
+            throw NoSuchElementException("Attachment not found or already sent.")
+        }
+    }
+
+    @Transactional
     fun updateSession(sessionId: String, request: UpdateChatSessionRequest): ChatSessionDto {
         val existing = repository.findSession(sessionId) ?: throw NoSuchElementException("Chat session not found.")
         val title = request.title.trim()
@@ -128,6 +196,9 @@ class ChatService(
         val session = repository.findSession(sessionId) ?: throw NoSuchElementException("Chat session not found.")
         val emitter = eventBroker.subscribe(sessionId)
         runService.activeRunSnapshot(sessionId)?.let { snapshot ->
+            repository.findLatestUnansweredUserMessage(sessionId)?.let { message ->
+                eventBroker.send(emitter = emitter, eventName = "user.message.created", data = message)
+            }
             eventBroker.send(
                 emitter = emitter,
                 eventName = "run.started",
@@ -163,9 +234,46 @@ class ChatService(
         return emitter
     }
 
+    @Transactional
     fun addMessage(sessionId: String, request: CreateChatMessageRequest): ChatMessageRunDto =
         runService.addMessage(sessionId = sessionId, request = request)
 
     fun cancelCurrentRun(sessionId: String): CancelChatRunResponse =
         runService.cancelCurrentRun(sessionId)
+}
+
+private const val MaxAttachmentBytes = 20L * 1024L * 1024L
+private const val TextPreviewBytes = 128 * 1024
+private const val TextPreviewChars = 12_000
+
+private fun sanitizeFileName(value: String?): String {
+    val name = value
+        ?.substringAfterLast('/')
+        ?.substringAfterLast('\\')
+        ?.replace(Regex("[\\r\\n\\t]"), " ")
+        ?.trim()
+        ?.takeIf(String::isNotEmpty)
+        ?: "attachment"
+    return name.take(180)
+}
+
+private fun sha256(content: ByteArray): String =
+    HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(content))
+
+private fun textPreview(fileName: String, contentType: String, content: ByteArray): String? {
+    if (content.size > TextPreviewBytes || !isTextLike(fileName, contentType)) return null
+    return content
+        .toString(Charsets.UTF_8)
+        .replace("\u0000", "")
+        .trim()
+        .take(TextPreviewChars)
+        .takeIf(String::isNotBlank)
+}
+
+private fun isTextLike(fileName: String, contentType: String): Boolean {
+    val normalizedType = contentType.lowercase()
+    if (normalizedType.startsWith("text/")) return true
+    if (normalizedType in setOf("application/json", "application/xml", "application/x-yaml")) return true
+    val extension = fileName.substringAfterLast('.', "").lowercase()
+    return extension in setOf("txt", "md", "csv", "json", "yaml", "yml", "xml", "html", "htm", "log")
 }

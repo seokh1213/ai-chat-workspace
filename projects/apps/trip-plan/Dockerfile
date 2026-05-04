@@ -19,7 +19,7 @@ RUN ./gradlew :backend:bootJar --no-daemon -x :backend:frontendInstall -x :backe
 
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
-RUN addgroup -S tripplan && adduser -S tripplan -G tripplan
+RUN addgroup -S -g 1000 tripplan && adduser -S -u 1000 tripplan -G tripplan
 COPY --from=backend-build /workspace/backend/build/libs/*.jar /app/trip-plan.jar
 USER tripplan
 EXPOSE 8081

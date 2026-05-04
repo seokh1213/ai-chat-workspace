@@ -34,6 +34,8 @@ spec:
         app.kubernetes.io/name: trip-plan-app
         app.kubernetes.io/part-of: trip-plan
     spec:
+      securityContext:
+        fsGroup: 1000
       containers:
         - name: app
           image: registry.wukong.monster/dev/trip-plan/app:0.2.1
@@ -60,6 +62,8 @@ spec:
               value: "5"
             - name: CODEX_APP_SERVER_URL
               value: ws://trip-plan-codex:8765
+            - name: TRIP_PLANNER_MODEL_ATTACHMENT_DIR
+              value: /model-attachments
             - name: CODEX_APP_SERVER_MANAGED
               value: "false"
             - name: CODEX_APP_SERVER_CWD
@@ -91,3 +95,10 @@ spec:
             limits:
               cpu: "1"
               memory: 1Gi
+          volumeMounts:
+            - name: model-attachments
+              mountPath: /model-attachments
+      volumes:
+        - name: model-attachments
+          persistentVolumeClaim:
+            claimName: trip-plan-model-attachments

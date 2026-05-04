@@ -11,10 +11,13 @@ import {
   Clock3,
   Copy,
   Edit3,
+  FileText,
   History,
+  ImageIcon,
   Loader2,
   MapPinned,
   Navigation,
+  Paperclip,
   PanelLeftClose,
   PanelLeftOpen,
   PanelRightClose,
@@ -27,7 +30,10 @@ import {
   X
 } from "lucide-react";
 import {
+  type ChangeEvent,
+  type ClipboardEvent as ReactClipboardEvent,
   type CSSProperties,
+  type DragEvent as ReactDragEvent,
   type FormEvent,
   type KeyboardEvent,
   type PointerEvent as ReactPointerEvent,
@@ -63,6 +69,8 @@ import {
   rollbackCheckpoint,
   sendChatMessage,
   sendSetupAssistantMessage,
+  uploadChatAttachment,
+  deleteChatAttachment,
   updateChatSession,
   updateItineraryItem,
   updatePlace,
@@ -72,6 +80,7 @@ import {
 import type {
   AiEditRunSummary,
   AiProviderStatus,
+  ChatAttachment,
   ChatMessage,
   ChatRunActivityEvent,
   ChatSession,
@@ -110,6 +119,17 @@ type EditorLayout = {
   plannerWidth: number;
   chatWidth: number;
   placesHeight: number;
+};
+type PendingChatAttachment = {
+  localId: string;
+  fileName: string;
+  contentType: string;
+  byteSize: number;
+  previewUrl: string | null;
+  status: "queued" | "uploading" | "ready" | "failed";
+  error: string | null;
+  attachment: ChatAttachment | null;
+  file: File;
 };
 type WorkspaceSettingsForm = {
   name: string;
@@ -255,6 +275,7 @@ function App() {
   const [editingPlaceId, setEditingPlaceId] = useState<string | null>(null);
   const [focusedItemId, setFocusedItemId] = useState<string | null>(null);
   const [chatText, setChatText] = useState("");
+  const [pendingChatAttachments, setPendingChatAttachments] = useState<PendingChatAttachment[]>([]);
   const [isChatSending, setIsChatSending] = useState(false);
   const [chatStreamLabel, setChatStreamLabel] = useState<string | null>(null);
   const [chatActivity, setChatActivity] = useState<ChatRunActivityEvent | null>(null);
@@ -282,6 +303,7 @@ function App() {
   const tripListRequestRef = useRef(0);
   const tripOpenRequestRef = useRef(0);
   const chatLoadRequestRef = useRef(0);
+  const pendingChatAttachmentsRef = useRef<PendingChatAttachment[]>([]);
 
   function clearChatStreamBuffer() {
     if (chatStreamPumpRef.current != null) {
@@ -290,6 +312,110 @@ function App() {
     }
     chatStreamQueueRef.current = "";
     chatStreamDeltaSeenRef.current = false;
+  }
+
+  function clearPendingChatAttachments(deleteRemote = true) {
+    setPendingChatAttachments((current) => {
+      current.forEach((item) => {
+        if (item.previewUrl) {
+          URL.revokeObjectURL(item.previewUrl);
+        }
+        if (deleteRemote && item.attachment) {
+          void deleteChatAttachment(item.attachment.chatSessionId, item.attachment.id).catch((nextError) => {
+            console.debug("chat attachment cleanup failed", nextError);
+          });
+        }
+      });
+      pendingChatAttachmentsRef.current = [];
+      return [];
+    });
+  }
+
+  async function removePendingChatAttachment(localId: string) {
+    const target = pendingChatAttachmentsRef.current.find((item) => item.localId === localId);
+    if (target?.attachment) {
+      try {
+        await deleteChatAttachment(target.attachment.chatSessionId, target.attachment.id);
+      } catch (nextError) {
+        console.debug("chat attachment delete failed", nextError);
+      }
+    }
+    if (target?.previewUrl) {
+      URL.revokeObjectURL(target.previewUrl);
+    }
+    setPendingChatAttachments((current) => {
+      const next = current.filter((item) => item.localId !== localId);
+      pendingChatAttachmentsRef.current = next;
+      return next;
+    });
+  }
+
+  async function addPendingChatFiles(files: FileList | File[] | null) {
+    if (!activeChatId || !files) return;
+    const nextFiles = Array.from(files).filter((file) => file.size > 0);
+    if (!nextFiles.length) return;
+    const availableSlots = Math.max(0, 8 - pendingChatAttachmentsRef.current.length);
+    const acceptedFiles = nextFiles.slice(0, availableSlots);
+    if (!acceptedFiles.length) return;
+
+    const pendingItems: PendingChatAttachment[] = acceptedFiles.map((file) => {
+      const localId = `local_att_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+      const previewUrl = file.type.startsWith("image/") ? URL.createObjectURL(file) : null;
+      return {
+        localId,
+        fileName: file.name || "pasted-image.png",
+        contentType: file.type || "application/octet-stream",
+        byteSize: file.size,
+        previewUrl,
+        status: "queued",
+        error: null,
+        attachment: null,
+        file
+      };
+    });
+
+    pendingChatAttachmentsRef.current = [...pendingChatAttachmentsRef.current, ...pendingItems];
+    setPendingChatAttachments(pendingChatAttachmentsRef.current);
+
+    for (const pending of pendingItems) {
+      if (!pendingChatAttachmentsRef.current.some((item) => item.localId === pending.localId)) continue;
+      setPendingChatAttachments((current) => {
+        const next = current.map((item) =>
+          item.localId === pending.localId ? { ...item, status: "uploading" as const } : item
+        );
+        pendingChatAttachmentsRef.current = next;
+        return next;
+      });
+      try {
+        const attachment = await uploadChatAttachment(activeChatId, pending.file);
+        setPendingChatAttachments((current) => {
+          const next = current.map((item) =>
+            item.localId === pending.localId
+              ? {
+                  ...item,
+                  fileName: attachment.fileName,
+                  contentType: attachment.contentType,
+                  byteSize: attachment.byteSize,
+                  status: "ready" as const,
+                  attachment
+                }
+              : item
+          );
+          pendingChatAttachmentsRef.current = next;
+          return next;
+        });
+      } catch (nextError) {
+        setPendingChatAttachments((current) => {
+          const next = current.map((item) =>
+            item.localId === pending.localId
+              ? { ...item, status: "failed" as const, error: readError(nextError) }
+              : item
+          );
+          pendingChatAttachmentsRef.current = next;
+          return next;
+        });
+      }
+    }
   }
 
   function enqueueChatStreamDelta(delta: string) {
@@ -332,6 +458,18 @@ function App() {
 
   useEffect(() => {
     void bootstrap();
+  }, []);
+
+  useEffect(() => {
+    pendingChatAttachmentsRef.current = pendingChatAttachments;
+  }, [pendingChatAttachments]);
+
+  useEffect(() => {
+    return () => {
+      pendingChatAttachmentsRef.current.forEach((item) => {
+        if (item.previewUrl) URL.revokeObjectURL(item.previewUrl);
+      });
+    };
   }, []);
 
   useEffect(() => {
@@ -518,6 +656,22 @@ function App() {
       setChatStreamLabel(label);
       window.setTimeout(() => setChatStreamLabel(null), 1200);
     };
+    const upsertLiveMessage = (message: ChatMessage | null) => {
+      if (!message || message.chatSessionId !== eventSessionId) return;
+      setMessages((current) => {
+        const existingIndex = current.findIndex((candidate) => candidate.id === message.id);
+        if (existingIndex >= 0) {
+          const next = [...current];
+          next[existingIndex] = message;
+          return next;
+        }
+        return sortChatMessages([...current, message]);
+      });
+    };
+    const onUserMessageCreated = (event: MessageEvent) => {
+      noteServerEvent();
+      upsertLiveMessage(parseSseData<ChatMessage>(event));
+    };
     const onStarted = (event: MessageEvent) => {
       noteServerEvent();
       const data = parseSseData<{ runId?: string; createdAt?: string; message?: string }>(event);
@@ -658,6 +812,7 @@ function App() {
       source?.close();
       source = new EventSource(`/api/chat-sessions/${encodeURIComponent(eventSessionId)}/events`);
       source.addEventListener("ready", onReady);
+      source.addEventListener("user.message.created", onUserMessageCreated);
       source.addEventListener("run.started", onStarted);
       source.addEventListener("run.activity", onActivity);
       source.addEventListener("assistant.message.delta", onAssistantDelta);
@@ -761,6 +916,7 @@ function App() {
   async function enterTrip(tripId: string, options: { updatePath?: boolean; chatSessionId?: string } = {}) {
     const requestId = ++tripOpenRequestRef.current;
     setIsTripOpening(true);
+    clearPendingChatAttachments();
     setChatSessions([]);
     setChatSessionId("");
     setActiveChatId(null);
@@ -842,6 +998,7 @@ function App() {
   async function selectChatSession(sessionId: string) {
     if (sessionId === chatSessionId) return;
     const requestId = ++chatLoadRequestRef.current;
+    clearPendingChatAttachments();
     setChatText(activeTrip ? readChatDraft(activeTrip.id, sessionId) : "");
     setChatSessionId(sessionId);
     setActiveChatId(sessionId);
@@ -875,6 +1032,7 @@ function App() {
       const title = selectedDay ? `Day ${selectedDay.dayNumber} 일정 조율` : `전체 일정 조율 ${chatSessions.length + 1}`;
       const session = await createChatSession(activeTrip.id, title);
       ++chatLoadRequestRef.current;
+      clearPendingChatAttachments();
       setChatSessions((current) => [session, ...current]);
       setChatSessionId(session.id);
       setActiveChatId(session.id);
@@ -891,6 +1049,7 @@ function App() {
   function openChatList() {
     if (!activeTrip) return;
     ++chatLoadRequestRef.current;
+    clearPendingChatAttachments();
     setChatSessionId("");
     setActiveChatId(null);
     setMessages([]);
@@ -1296,7 +1455,15 @@ function App() {
   async function submitChat(event: FormEvent) {
     event.preventDefault();
     const content = chatText.trim();
-    if (!content || !chatSessionId) return;
+    const readyAttachments = pendingChatAttachments
+      .filter((item) => item.status === "ready" && item.attachment)
+      .map((item) => item.attachment as ChatAttachment);
+    if ((!content && readyAttachments.length === 0) || !chatSessionId) return;
+    if (pendingChatAttachments.some((item) => item.status === "queued" || item.status === "uploading")) return;
+    if (pendingChatAttachments.some((item) => item.status === "failed")) {
+      window.alert("업로드에 실패한 첨부를 제거한 뒤 전송해 주세요.");
+      return;
+    }
 
     const abortController = new AbortController();
     chatAbortControllerRef.current = abortController;
@@ -1319,18 +1486,22 @@ function App() {
       content,
       status: "pending",
       metadataJson: "{}",
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      attachments: readyAttachments
     };
     setMessages((current) => [...current, localUserMessage]);
     let accepted = false;
     try {
-      const run = await sendChatMessage(chatSessionId, content, abortController.signal);
+      const run = await sendChatMessage(chatSessionId, content, readyAttachments.map((attachment) => attachment.id), abortController.signal);
       accepted = true;
+      clearPendingChatAttachments(false);
       chatActiveRunIdRef.current = run.runId;
-      setMessages((current) => [
-        ...current.filter((message) => message.id !== localUserMessage.id),
-        run.userMessage
-      ]);
+      setMessages((current) =>
+        sortChatMessages([
+          ...current.filter((message) => message.id !== localUserMessage.id && message.id !== run.userMessage.id),
+          run.userMessage
+        ])
+      );
     } catch (nextError) {
       if (isAbortError(nextError)) {
         isChatSendingRef.current = false;
@@ -1345,7 +1516,8 @@ function App() {
             content: "응답 생성을 중지했습니다. 변경 사항은 적용하지 않습니다.",
             status: "cancelled",
             metadataJson: JSON.stringify({ durationMs: performance.now() - startedAt }),
-            createdAt: new Date().toISOString()
+            createdAt: new Date().toISOString(),
+            attachments: []
           }
         ]);
         return;
@@ -1359,7 +1531,8 @@ function App() {
           content: `요청을 처리하지 못했습니다. ${readError(nextError)}`,
           status: "failed",
           metadataJson: JSON.stringify({ durationMs: performance.now() - startedAt }),
-          createdAt: new Date().toISOString()
+          createdAt: new Date().toISOString(),
+          attachments: []
         }
       ]);
       isChatSendingRef.current = false;
@@ -1514,6 +1687,7 @@ function App() {
         isRollingBack={isRollingBack}
         messages={messages}
         editRuns={editRuns}
+        pendingChatAttachments={pendingChatAttachments}
         chatText={chatText}
         isChatSending={isChatSending}
         chatStreamLabel={chatStreamLabel}
@@ -1526,6 +1700,8 @@ function App() {
         onOpenChatList={openChatList}
         onRollbackCheckpoint={(checkpointId) => void rollbackToCheckpoint(checkpointId)}
         onChatTextChange={setChatText}
+        onAddChatFiles={(files) => void addPendingChatFiles(files)}
+        onRemovePendingChatAttachment={(localId) => void removePendingChatAttachment(localId)}
         onSubmitChat={submitChat}
         onStopChat={stopChatResponse}
         onDeleteTrip={() => void deleteActiveTrip()}
@@ -2168,6 +2344,7 @@ function EditorScreen(props: {
   isRollingBack: boolean;
   messages: ChatMessage[];
   editRuns: AiEditRunSummary[];
+  pendingChatAttachments: PendingChatAttachment[];
   chatText: string;
   isChatSending: boolean;
   chatStreamLabel: string | null;
@@ -2180,6 +2357,8 @@ function EditorScreen(props: {
   onOpenChatList: () => void;
   onRollbackCheckpoint: (checkpointId: string) => void;
   onChatTextChange: (text: string) => void;
+  onAddChatFiles: (files: FileList | File[] | null) => void;
+  onRemovePendingChatAttachment: (localId: string) => void;
   onSubmitChat: (event: FormEvent) => void;
   onStopChat: () => void;
   onDeleteTrip: () => void;
@@ -2212,6 +2391,7 @@ function EditorScreen(props: {
   const isMobileInput = isMobileUserAgent();
   const lineBreakModifier = isWindowsUserAgent() ? "Alt" : "Option";
   const chatLogRef = useRef<HTMLDivElement | null>(null);
+  const chatFileInputRef = useRef<HTMLInputElement | null>(null);
   const shouldAutoScrollChatRef = useRef(true);
   const focusClearTimerRef = useRef<number | null>(null);
   const detailFocusClearTimerRef = useRef<number | null>(null);
@@ -2228,6 +2408,13 @@ function EditorScreen(props: {
     "--chat-width": `${props.layout.chatWidth}px`,
     "--places-height": `${props.layout.placesHeight}px`
   } as CSSProperties;
+  const chatAttachmentsUploading = props.pendingChatAttachments.some((attachment) => attachment.status === "queued" || attachment.status === "uploading");
+  const chatAttachmentsFailed = props.pendingChatAttachments.some((attachment) => attachment.status === "failed");
+  const canSubmitChat =
+    !props.isChatDetailLoading &&
+    !chatAttachmentsUploading &&
+    !chatAttachmentsFailed &&
+    (props.chatText.trim().length > 0 || props.pendingChatAttachments.some((attachment) => attachment.status === "ready"));
 
   useEffect(() => {
     if (props.activeChatId && !readMobileViewFromUrl()) {
@@ -2319,6 +2506,40 @@ function EditorScreen(props: {
     setShowScrollToLatest(false);
     props.onSubmitChat(event);
     window.requestAnimationFrame(() => scrollChatToLatest("auto"));
+  }
+
+  function openChatFilePicker() {
+    chatFileInputRef.current?.click();
+  }
+
+  function handleChatFileInputChange(event: ChangeEvent<HTMLInputElement>) {
+    props.onAddChatFiles(event.target.files);
+    event.target.value = "";
+  }
+
+  function handleChatPaste(event: ReactClipboardEvent<HTMLTextAreaElement>) {
+    const itemFiles = Array.from(event.clipboardData.items)
+      .filter((item) => item.kind === "file")
+      .map((item) => item.getAsFile())
+      .filter((file): file is File => file != null);
+    const files = itemFiles.length ? itemFiles : Array.from(event.clipboardData.files);
+    const imageFiles = files.filter((file) => file.type.startsWith("image/"));
+    if (!imageFiles.length) return;
+    event.preventDefault();
+    props.onAddChatFiles(imageFiles.map((file, index) => normalizePastedImageFile(file, index)));
+  }
+
+  function handleChatDrop(event: ReactDragEvent<HTMLDivElement>) {
+    const files = Array.from(event.dataTransfer.files);
+    if (!files.length) return;
+    event.preventDefault();
+    props.onAddChatFiles(files);
+  }
+
+  function handleChatDragOver(event: ReactDragEvent<HTMLDivElement>) {
+    if (event.dataTransfer.types.includes("Files")) {
+      event.preventDefault();
+    }
   }
 
   async function submitActiveChatTitle(event: FormEvent) {
@@ -3093,25 +3314,48 @@ function EditorScreen(props: {
                   </button>
                 ) : null}
               </div>
-              <form className="chat-form" onSubmit={submitChatForm}>
-                <textarea
-                  value={props.chatText}
-                  onChange={(event) => props.onChatTextChange(event.target.value)}
-                  onKeyDown={(event) => submitOnCommandEnter(event)}
-                  placeholder={isMobileInput ? "메시지를 입력하세요. 줄바꿈은 Return, 전송은 버튼" : `Enter 전송, Shift/${lineBreakModifier}+Enter 줄바꿈`}
-                  disabled={props.isChatDetailLoading}
-                  rows={3}
+              <div className="chat-composer" onDragOver={handleChatDragOver} onDrop={handleChatDrop}>
+                <PendingChatAttachmentTray
+                  attachments={props.pendingChatAttachments}
+                  onRemove={props.onRemovePendingChatAttachment}
                 />
-                {props.isChatSending ? (
-                  <button className="send-button stop" type="button" aria-label="응답 중지" onClick={props.onStopChat}>
-                    <X size={16} />
+                <form className="chat-form" onSubmit={submitChatForm}>
+                  <input
+                    ref={chatFileInputRef}
+                    className="visually-hidden"
+                    type="file"
+                    multiple
+                    onChange={handleChatFileInputChange}
+                  />
+                  <button
+                    className="attach-button"
+                    type="button"
+                    aria-label="파일 첨부"
+                    disabled={props.isChatDetailLoading || props.isChatSending}
+                    onClick={openChatFilePicker}
+                  >
+                    <Paperclip size={17} />
                   </button>
-                ) : (
-                  <button className="send-button" type="submit" disabled={props.isChatDetailLoading || !props.chatText.trim()}>
-                    <Send size={16} />
-                  </button>
-                )}
-              </form>
+                  <textarea
+                    value={props.chatText}
+                    onChange={(event) => props.onChatTextChange(event.target.value)}
+                    onKeyDown={(event) => submitOnCommandEnter(event)}
+                    onPaste={handleChatPaste}
+                    placeholder={isMobileInput ? "메시지를 입력하세요. 사진은 붙여넣기 가능" : `Enter 전송, Shift/${lineBreakModifier}+Enter 줄바꿈, 사진 붙여넣기 가능`}
+                    disabled={props.isChatDetailLoading}
+                    rows={3}
+                  />
+                  {props.isChatSending ? (
+                    <button className="send-button stop" type="button" aria-label="응답 중지" onClick={props.onStopChat}>
+                      <X size={16} />
+                    </button>
+                  ) : (
+                    <button className="send-button" type="submit" disabled={!canSubmitChat}>
+                      <Send size={16} />
+                    </button>
+                  )}
+                </form>
+              </div>
             </>
           ) : (
             <ChatHome
@@ -3187,7 +3431,8 @@ function ChatMessageBubble(props: {
 
   return (
     <div className={isUser ? "user-message" : "assistant-message"}>
-      <MarkdownContent content={props.message.content} />
+      {props.message.attachments.length ? <ChatAttachmentList attachments={props.message.attachments} /> : null}
+      {props.message.content.trim() ? <MarkdownContent content={props.message.content} /> : null}
       {!isUser ? <OperationPreviewList items={editRun?.operationPreview ?? []} status={editRun?.status} /> : null}
       <div className="message-meta">
         <Clock3 size={12} />
@@ -3204,6 +3449,72 @@ function ChatMessageBubble(props: {
           {props.copied ? "복사됨" : "복사"}
         </button>
       </div>
+    </div>
+  );
+}
+
+function ChatAttachmentList(props: { attachments: ChatAttachment[] }) {
+  if (!props.attachments.length) return null;
+  return (
+    <div className="chat-attachment-list">
+      {props.attachments.map((attachment) => (
+        <a
+          className={attachment.kind === "image" ? "chat-attachment image" : "chat-attachment file"}
+          href={attachment.downloadUrl}
+          key={attachment.id}
+          target="_blank"
+          rel="noreferrer"
+        >
+          {attachment.kind === "image" ? (
+            <img src={attachment.downloadUrl} alt="" loading="lazy" />
+          ) : (
+            <span className="attachment-file-icon">
+              <FileText size={16} />
+            </span>
+          )}
+          <span>
+            <strong>{attachment.fileName}</strong>
+            <em>{formatFileSize(attachment.byteSize)}</em>
+          </span>
+        </a>
+      ))}
+    </div>
+  );
+}
+
+function PendingChatAttachmentTray(props: {
+  attachments: PendingChatAttachment[];
+  onRemove: (localId: string) => void;
+}) {
+  if (!props.attachments.length) return null;
+  return (
+    <div className="pending-attachment-tray">
+      {props.attachments.map((attachment) => (
+        <div className={`pending-attachment ${attachment.status}`} key={attachment.localId}>
+          {attachment.previewUrl ? (
+            <img src={attachment.previewUrl} alt="" />
+          ) : (
+            <span className="attachment-file-icon">
+              {attachment.contentType.startsWith("image/") ? <ImageIcon size={16} /> : <FileText size={16} />}
+            </span>
+          )}
+          <span>
+            <strong>{attachment.fileName}</strong>
+            <em>
+              {attachment.status === "uploading"
+                ? "업로드 중"
+                : attachment.status === "failed"
+                  ? attachment.error ?? "업로드 실패"
+                  : attachment.status === "queued"
+                    ? "대기 중"
+                    : `준비됨 · ${formatFileSize(attachment.byteSize)}`}
+            </em>
+          </span>
+          <button type="button" aria-label="첨부 제거" onClick={() => props.onRemove(attachment.localId)}>
+            <X size={13} />
+          </button>
+        </div>
+      ))}
     </div>
   );
 }
@@ -4176,6 +4487,15 @@ function parseEventTimeMs(value: string | null | undefined): number | null {
   return Number.isFinite(time) ? time : null;
 }
 
+function sortChatMessages(messages: ChatMessage[]): ChatMessage[] {
+  return [...messages].sort((left, right) => {
+    const leftTime = parseEventTimeMs(left.createdAt) ?? 0;
+    const rightTime = parseEventTimeMs(right.createdAt) ?? 0;
+    if (leftTime !== rightTime) return leftTime - rightTime;
+    return left.id.localeCompare(right.id);
+  });
+}
+
 function isTerminalChatRunStatus(status: string): boolean {
   return status === "applied" || status === "completed" || status === "failed" || status === "cancelled";
 }
@@ -4203,6 +4523,27 @@ function formatElapsedSeconds(seconds: number): string {
   const minutes = Math.floor(seconds / 60);
   const rest = seconds % 60;
   return rest === 0 ? `${minutes}분` : `${minutes}분 ${rest}초`;
+}
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes}B`;
+  const kib = bytes / 1024;
+  if (kib < 1024) return `${kib.toFixed(1)}KB`;
+  return `${(kib / 1024).toFixed(1)}MB`;
+}
+
+function normalizePastedImageFile(file: File, index: number): File {
+  const extension = imageExtension(file.type);
+  const stamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\..+$/, "");
+  const name = file.name && file.name !== "image.png" ? file.name : `pasted-image-${stamp}-${index + 1}.${extension}`;
+  return new File([file], name, { type: file.type || "image/png", lastModified: Date.now() });
+}
+
+function imageExtension(contentType: string): string {
+  if (contentType.includes("jpeg") || contentType.includes("jpg")) return "jpg";
+  if (contentType.includes("webp")) return "webp";
+  if (contentType.includes("gif")) return "gif";
+  return "png";
 }
 
 function buildChatSessionMarkdown(props: {
@@ -4247,15 +4588,25 @@ function buildChatSessionMarkdown(props: {
 }
 
 function buildChatMessageMarkdown(message: ChatMessage, index: number): string {
-  return [
+  const lines = [
     `### ${index}. ${chatRoleLabel(message.role)}`,
     "",
     message.content.trim() || "(빈 메시지)"
-  ].join("\n");
+  ];
+  if (message.attachments.length) {
+    lines.push("", "첨부:");
+    message.attachments.forEach((attachment) => {
+      lines.push(`- ${attachment.fileName} (${attachment.kind}, ${formatFileSize(attachment.byteSize)})`);
+    });
+  }
+  return lines.join("\n");
 }
 
 function buildChatMessageContentMarkdown(message: ChatMessage): string {
-  return `${message.content.trim() || "(빈 메시지)"}\n`;
+  const attachmentLines = message.attachments.map((attachment) =>
+    `- ${attachment.fileName} (${attachment.kind}, ${formatFileSize(attachment.byteSize)})`
+  );
+  return `${message.content.trim() || "(빈 메시지)"}${attachmentLines.length ? `\n\n첨부:\n${attachmentLines.join("\n")}` : ""}\n`;
 }
 
 function markdownLine(value: string): string {

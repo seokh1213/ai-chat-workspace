@@ -85,28 +85,51 @@ internal object CodexAppServerProtocol {
         properties: CodexAppServerProperties,
         prompt: String,
         outputSchema: Map<String, Any?>?,
-    ): Map<String, Any?> =
-        mapOf(
+    ): Map<String, Any?> {
+        val input = buildList {
+            add(textInput(prompt))
+            request.inputImages.forEach { image ->
+                image.localPath?.let { path -> add(localImageInput(path)) }
+                    ?: image.url?.let { url -> add(imageInput(url)) }
+            }
+        }
+
+        return mapOf(
             "threadId" to threadId,
-            "input" to listOf(textInput(prompt)),
+            "input" to input,
             "model" to (request.model ?: properties.model),
             "effort" to (request.effort ?: properties.effort),
             "approvalPolicy" to "never",
             "cwd" to properties.cwdOrNull(),
             "outputSchema" to outputSchema,
         ).filterValues { it != null }
+    }
 
-    fun turnInterruptParams(threadId: String, turnId: String): Map<String, Any?> =
-        mapOf(
-            "threadId" to threadId,
-            "turnId" to turnId,
-        )
+    fun turnInputCount(request: AiChatRequest): Int = 1 + request.inputImages.size
 
     private fun textInput(text: String): Map<String, Any?> =
         mapOf(
             "type" to "text",
             "text" to text,
             "text_elements" to emptyList<Any>(),
+        )
+
+    private fun imageInput(url: String): Map<String, Any?> =
+        mapOf(
+            "type" to "image",
+            "url" to url,
+        )
+
+    private fun localImageInput(path: String): Map<String, Any?> =
+        mapOf(
+            "type" to "localImage",
+            "path" to path,
+        )
+
+    fun turnInterruptParams(threadId: String, turnId: String): Map<String, Any?> =
+        mapOf(
+            "threadId" to threadId,
+            "turnId" to turnId,
         )
 }
 

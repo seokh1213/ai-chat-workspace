@@ -33,10 +33,25 @@ data class ChatMessageDto(
     val status: String,
     val metadataJson: String,
     val createdAt: String,
+    val attachments: List<ChatAttachmentDto> = emptyList(),
+)
+
+data class ChatAttachmentDto(
+    val id: String,
+    val chatSessionId: String,
+    val chatMessageId: String?,
+    val fileName: String,
+    val contentType: String,
+    val byteSize: Long,
+    val kind: String,
+    val downloadUrl: String,
+    val textPreview: String? = null,
+    val createdAt: String,
 )
 
 data class CreateChatMessageRequest(
-    val content: String,
+    val content: String = "",
+    val attachmentIds: List<String> = emptyList(),
 )
 
 data class ImportChatMessageDto(

@@ -89,6 +89,14 @@ class CodexAppServerClient(
                 }
                 ?: prompt
 
+            if (request.inputImages.isNotEmpty()) {
+                logger.info(
+                    "Codex app-server turn includes image inputs runId={} images={} inputItems={}",
+                    request.runId,
+                    request.inputImages.size,
+                    CodexAppServerProtocol.turnInputCount(request),
+                )
+            }
             val turnStart = rpc.request(
                 method = Method.TURN_START,
                 params = CodexAppServerProtocol.turnStartParams(

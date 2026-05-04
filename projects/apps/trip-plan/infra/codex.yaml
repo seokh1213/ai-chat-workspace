@@ -83,7 +83,12 @@ spec:
           volumeMounts:
             - name: codex-home
               mountPath: /ai-chat/.codex
+            - name: model-attachments
+              mountPath: /model-attachments
       volumes:
         - name: codex-home
           persistentVolumeClaim:
             claimName: trip-plan-codex-home
+        - name: model-attachments
+          persistentVolumeClaim:
+            claimName: trip-plan-model-attachments
