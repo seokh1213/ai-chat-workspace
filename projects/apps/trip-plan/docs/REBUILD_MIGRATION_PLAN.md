@@ -24,11 +24,11 @@ Exit criteria:
 
 ## Phase 1: Backend Scaffold
 
-Create `backend/`.
+Create `projects/apps/trip-plan/backend/`.
 
 Baseline:
 
-- Root Gradle Kotlin DSL monorepo with `backend` included
+- Gradle Kotlin DSL app build with `backend` included
 - Spring Boot 4.0.5
 - Kotlin 2.3.20
 - JDK 21
@@ -57,7 +57,7 @@ com.example.tripplanner
 
 Exit criteria:
 
-- `./gradlew :backend:test` passes.
+- `cd projects/apps/trip-plan` 후 `./gradlew :backend:test` passes.
 - App starts on a configurable port.
 - Flyway creates initial SQLite schema.
 - `GET /actuator/health` works.
@@ -71,7 +71,7 @@ Implement:
 - Place repository
 - Itinerary repository
 - Opt-in SQL seed runner
-- `backend/src/main/resources/db/seed/001_default_workspace.sql`
+- `projects/apps/trip-plan/backend/src/main/resources/db/seed/001_default_workspace.sql`
 
 Exit criteria:
 
@@ -108,7 +108,7 @@ Exit criteria:
 
 ## Phase 4: Frontend Scaffold
 
-Create `frontend/`.
+Create `projects/apps/trip-plan/frontend/`.
 
 Status: completed.
 
@@ -217,7 +217,7 @@ Exit criteria:
 - Stop/cancel works.
 - Browser never receives Codex credentials or raw auth data.
 
-Status: implemented for external app-server connection, opt-in Spring-managed process startup/shutdown, streaming, thread resume, generated output schema, and provider-native `turn/interrupt` cancellation. Protocol TypeScript and JSON Schema snapshots are generated under `docs/codex-app-server-protocol/`, and Kotlin method/payload names are centralized in `CodexAppServerProtocol.kt`.
+Status: implemented for external app-server connection, opt-in Spring-managed process startup/shutdown, streaming, thread resume, generated output schema, and provider-native `turn/interrupt` cancellation. Protocol TypeScript and JSON Schema snapshots are generated under `projects/apps/trip-plan/docs/codex-app-server-protocol/`, and Kotlin method/payload names are centralized in `CodexAppServerProtocol.kt`.
 
 ## Phase 9.5: External API Provider Skeleton
 
@@ -239,7 +239,7 @@ Status: replaced by explicit workspace-level `openai-compatible` and `openrouter
 
 ## Phase 10: Retire Node Prototype
 
-Move current Node files into `legacy-node/` or remove them after parity.
+Move current Node files into `projects/apps/trip-plan/legacy-node/` or remove them after parity.
 
 Keep:
 
@@ -252,4 +252,4 @@ Exit criteria:
 - Kotlin backend + React frontend are the default dev commands.
 - README points to new stack.
 
-Status: completed. Legacy Node files are under `legacy-node/`; Kotlin backend and React frontend remain the root development path.
+Status: completed. Legacy Node files are under `projects/apps/trip-plan/legacy-node/`; Kotlin backend and React frontend remain the app development path.

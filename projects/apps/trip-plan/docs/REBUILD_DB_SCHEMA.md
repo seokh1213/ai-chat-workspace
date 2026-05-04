@@ -1,6 +1,6 @@
 # Rebuild DB Schema
 
-Target database is SQLite. Migrations are managed by Flyway under `backend/src/main/resources/db/migration`.
+Target database is SQLite. Migrations are managed by Flyway under `projects/apps/trip-plan/backend/src/main/resources/db/migration`.
 
 ## Naming
 
@@ -290,14 +290,14 @@ V004__init_ai_edit_schema.sql
 Seed data is separate SQL, applied after schema migration by an opt-in development runner.
 
 ```text
-backend/src/main/resources/db/seed/
+projects/apps/trip-plan/backend/src/main/resources/db/seed/
   001_default_workspace.sql
 ```
 
 Current planning copy:
 
 ```text
-docs/seed/001_default_workspace.sql
+projects/apps/trip-plan/docs/seed/001_default_workspace.sql
 ```
 
 Real trip data, including the current Okinawa source data, stays outside the generic code repository. If needed, convert it into a local-only SQL seed and apply it through the same seed runner.

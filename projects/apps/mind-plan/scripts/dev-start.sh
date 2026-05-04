@@ -2,8 +2,12 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-JAVA_HOME="${JAVA_HOME:-/Library/Java/JavaVirtualMachines/temurin-21.jdk/Contents/Home}"
-PATH="$JAVA_HOME/bin:$PATH"
+if [[ -z "${JAVA_HOME:-}" ]] && [[ -x /usr/libexec/java_home ]]; then
+  JAVA_HOME="$(/usr/libexec/java_home -v 21)"
+fi
+if [[ -n "${JAVA_HOME:-}" ]]; then
+  PATH="$JAVA_HOME/bin:$PATH"
+fi
 export JAVA_HOME PATH
 
 cd "$ROOT_DIR"

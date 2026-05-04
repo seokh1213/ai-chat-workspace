@@ -25,13 +25,12 @@
 
 | Class | Purpose | Source Example |
 | --- | --- | --- |
-| `ChatEventBroker` | SseEmitter registry and event publish | `projects/reusable/backend/.../chat/ChatEventBroker.kt` |
-| `ChatRunService` | provider stream orchestration | `projects/reusable/backend/.../chat/ChatRunService.kt` |
-| `ChatController` | REST/SSE endpoints | `projects/reusable/backend/.../chat/ChatController.kt` |
-| `ChatDtos` | DTO contracts | `projects/reusable/backend/.../chat/ChatDtos.kt` |
-| `AiProvider` | provider-neutral streaming contract | `projects/reusable/backend/.../ai/AiProvider.kt` |
-| `ExampleAiProvider` | deterministic dev/test provider | `projects/reusable/backend/.../ai/ExampleAiProvider.kt` |
-| `DomainAdapter` | domain boundary | `projects/reusable/backend/.../domain/DomainAdapter.kt` |
+| `ChatEventBroker` | SseEmitter registry and event publish | `projects/apps/trip-plan/backend/src/main/kotlin/app/tripplanner/chat/ChatEventBroker.kt` |
+| `ChatRunService` | provider stream orchestration | `projects/apps/trip-plan/backend/src/main/kotlin/app/tripplanner/chat/ChatRunService.kt` |
+| `ChatController` | REST/SSE endpoints | `projects/apps/trip-plan/backend/src/main/kotlin/app/tripplanner/chat/ChatController.kt` |
+| `ChatDtos` | DTO contracts | `projects/apps/trip-plan/backend/src/main/kotlin/app/tripplanner/chat/ChatDtos.kt` |
+| `AiProvider` | provider-neutral streaming contract | `projects/apps/trip-plan/backend/src/main/kotlin/app/tripplanner/ai/AiProvider.kt` |
+| `LocalRuleAiProvider` | deterministic dev/test provider | `projects/apps/trip-plan/backend/src/main/kotlin/app/tripplanner/ai/LocalRuleAiProvider.kt` |
 
 ## Required Project-Specific Pieces
 

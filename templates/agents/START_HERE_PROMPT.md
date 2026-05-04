@@ -7,16 +7,16 @@ You are building a new "AI chat workspace" application from this skeleton.
 
 Read these files first:
 - README.md
-- docs/00_PROJECT_BRIEF.md
-- docs/01_TARGET_ARCHITECTURE.md
-- docs/02_CORE_DATA_MODEL.md
-- docs/03_BACKEND_BLUEPRINT.md
-- docs/04_FRONTEND_BLUEPRINT.md
-- docs/05_AI_PROVIDER_AND_STREAMING.md
-- docs/06_DOMAIN_ADAPTER_GUIDE.md
-- docs/11_CUSTOMIZATION_CHECKLIST.md
-- agents/IMPLEMENTATION_PLAN.md
-- agents/CODE_EXTRACTION_GUIDE.md
+- templates/docs/00_PROJECT_BRIEF.md
+- templates/docs/01_TARGET_ARCHITECTURE.md
+- templates/docs/02_CORE_DATA_MODEL.md
+- templates/docs/03_BACKEND_BLUEPRINT.md
+- templates/docs/04_FRONTEND_BLUEPRINT.md
+- templates/docs/05_AI_PROVIDER_AND_STREAMING.md
+- templates/docs/06_DOMAIN_ADAPTER_GUIDE.md
+- templates/docs/11_CUSTOMIZATION_CHECKLIST.md
+- templates/agents/IMPLEMENTATION_PLAN.md
+- templates/agents/CODE_EXTRACTION_GUIDE.md
 
 Goal:
 - Build a reusable app where users manage workspaces, data spaces, source records, chat sessions, AI streaming responses, operations, checkpoints, and rollback.

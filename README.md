@@ -48,7 +48,7 @@ projects/
 
 ## Templates
 
-새 프로젝트를 시작할 때 참고할 빈 뼈대는 `templates/` 아래에 둔다.
+새 프로젝트를 시작할 때 사용할 빈 뼈대는 `templates/` 아래에 둔다.
 
 ```text
 templates/
@@ -67,7 +67,7 @@ templates/
 5. [Frontend Blueprint](templates/docs/04_FRONTEND_BLUEPRINT.md)
 6. [AI Provider And Streaming](templates/docs/05_AI_PROVIDER_AND_STREAMING.md)
 7. [Domain Adapter Guide](templates/docs/06_DOMAIN_ADAPTER_GUIDE.md)
-8. [Migration From Trip Planner](templates/docs/07_MIGRATION_FROM_TRIP_PLANNER.md)
+8. [Trip Plan Reuse Guide](templates/docs/07_TRIP_PLAN_REUSE_GUIDE.md)
 9. [External Bot Integration](templates/docs/08_EXTERNAL_BOT_INTEGRATION.md)
 10. [Docker Deployment](templates/docs/09_DOCKER_DEPLOYMENT.md)
 11. [Reusable Component Catalog](templates/docs/10_REUSABLE_COMPONENT_CATALOG.md)

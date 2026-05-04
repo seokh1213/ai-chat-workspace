@@ -33,7 +33,7 @@ CREATE TABLE workspaces (
 
 ## data_spaces
 
-도메인별 작업 대상이다. Trip Planner의 `trips`에 해당한다.
+도메인별 작업 대상이다. `projects/apps/trip-plan`의 `trips`에 해당한다.
 
 ```sql
 CREATE TABLE data_spaces (
@@ -182,4 +182,3 @@ CREATE TABLE ai_provider_sessions (
   updated_at TEXT NOT NULL
 );
 ```
-

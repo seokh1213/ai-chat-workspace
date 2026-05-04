@@ -19,7 +19,7 @@ codex app-server --listen ws://127.0.0.1:8765
 
 ```bash
 cd projects/apps/todo-ai
-export JAVA_HOME=/Library/Java/JavaVirtualMachines/temurin-21.jdk/Contents/Home
+export JAVA_HOME="$(/usr/libexec/java_home -v 21)"
 ./gradlew :backend:bootRun
 ```
 

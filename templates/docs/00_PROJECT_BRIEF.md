@@ -15,9 +15,9 @@
 7. 반영 전후 상태는 checkpoint로 남는다.
 8. 마음에 들지 않으면 롤백한다.
 
-## Trip Planner에서 일반화할 개념
+## `projects/apps/trip-plan`에서 일반화할 개념
 
-| Trip Planner | Generic Skeleton |
+| projects/apps/trip-plan | Generic Skeleton |
 | --- | --- |
 | trip | data_space |
 | trip_days | domain_views 또는 domain_sections |
@@ -48,4 +48,3 @@
 - 여행 특화 operation schema
 
 이들은 generic core가 아니라 `travel-domain-adapter`의 예시로 남긴다.
-

@@ -1,23 +1,23 @@
-# Migration From Trip Planner
+# Trip Plan Reuse Guide
 
 ## 목적
 
-`trip-plan`에서 검증된 구현을 새 skeleton에 맞게 일반화하되, 여행 도메인 결합을 줄인다.
+`projects/apps/trip-plan`에서 검증된 구현을 새 skeleton에 맞게 일반화하되, 여행 도메인 결합을 줄인다.
 
-## 1단계: 재사용 참고 대상
+## 1단계: 재사용 후보
 
 ### Backend
 
-- `ai/AiProvider.kt`
-- `ai/CodexAppServerClient.kt`
-- `ai/CodexAppServerProvider.kt`
-- `ai/OpenAiStyleProviders.kt`
-- `ai/ToolBlockStreamFilter.kt`
-- `ai/AiProviderResponseParser.kt`
-- `chat/ChatEventBroker.kt`
-- `chat/ChatRunRegistry.kt`
-- `common/ClockProvider.kt`
-- `common/ApiExceptionHandler.kt`
+- `projects/apps/trip-plan/backend/src/main/kotlin/app/tripplanner/ai/AiProvider.kt`
+- `projects/apps/trip-plan/backend/src/main/kotlin/app/tripplanner/ai/CodexAppServerClient.kt`
+- `projects/apps/trip-plan/backend/src/main/kotlin/app/tripplanner/ai/CodexAppServerProvider.kt`
+- `projects/apps/trip-plan/backend/src/main/kotlin/app/tripplanner/ai/OpenAiStyleProviders.kt`
+- `projects/apps/trip-plan/backend/src/main/kotlin/app/tripplanner/ai/ToolBlockStreamFilter.kt`
+- `projects/apps/trip-plan/backend/src/main/kotlin/app/tripplanner/ai/AiProviderResponseParser.kt`
+- `projects/apps/trip-plan/backend/src/main/kotlin/app/tripplanner/chat/ChatEventBroker.kt`
+- `projects/apps/trip-plan/backend/src/main/kotlin/app/tripplanner/chat/ChatRunRegistry.kt`
+- `projects/apps/trip-plan/backend/src/main/kotlin/app/tripplanner/common/ClockProvider.kt`
+- `projects/apps/trip-plan/backend/src/main/kotlin/app/tripplanner/common/ApiExceptionHandler.kt`
 
 단, package name은 바꾼다.
 
@@ -34,7 +34,7 @@
 
 ## 2단계: 이름만 일반화할 것
 
-| Trip Planner | Generic |
+| projects/apps/trip-plan | Generic |
 | --- | --- |
 | Trip | DataSpace |
 | TripState | DataSpaceState |

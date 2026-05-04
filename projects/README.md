@@ -26,15 +26,12 @@ projects/
         ChatMessageBubble.tsx
         OperationPreviewList.tsx
     backend/
-      src/main/kotlin/app/aichatworkspace/example/
-        ai/
-        chat/
-        domain/
+      # reusable backend extraction area
 ```
 
 ## 실행형 예제
 
-- `apps/trip-plan`: 기존 여행 계획 서비스 전체를 예제로 복사한 버전이다. 지도, 워크스페이스, 채팅 세션, provider 설정, operation 적용 흐름을 확인할 때 기준으로 쓴다.
+- `apps/trip-plan`: 여행 계획 예제 앱이다. 지도, 워크스페이스, 채팅 세션, provider 설정, operation 적용 흐름을 확인할 때 기준으로 쓴다.
 - `apps/mind-plan`: 같은 "원천 데이터 + AI 채팅 편집" 구조를 다른 도메인으로 적용한 예제다.
 - `apps/todo-ai`: 가장 작은 Todo 도메인으로 Codex app-server, SSE, Markdown 렌더링, operation parsing을 확인하는 예제다.
 

@@ -12,4 +12,4 @@
 - AI provider abstraction
 - operation apply/checkpoint
 
-다음 AI Agent는 `../../agents/IMPLEMENTATION_PLAN.md`를 따른다.
+다음 AI Agent는 `templates/agents/IMPLEMENTATION_PLAN.md`를 따른다.

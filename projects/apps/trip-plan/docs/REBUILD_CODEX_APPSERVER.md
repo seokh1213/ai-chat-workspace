@@ -176,11 +176,11 @@ External API providers use the same contract. For example, an API that returns S
 
 ## Protocol Snapshot
 
-Protocol message names and payload shapes are generated into `docs/codex-app-server-protocol/`.
+Protocol message names and payload shapes are generated into `projects/apps/trip-plan/docs/codex-app-server-protocol/`.
 
 ```bash
-codex app-server generate-ts --out docs/codex-app-server-protocol/ts --experimental
-codex app-server generate-json-schema --out docs/codex-app-server-protocol/json-schema --experimental
+codex app-server generate-ts --out projects/apps/trip-plan/docs/codex-app-server-protocol/ts --experimental
+codex app-server generate-json-schema --out projects/apps/trip-plan/docs/codex-app-server-protocol/json-schema --experimental
 ```
 
 The Kotlin adapter centralizes the app-server method names, notification names, and payload builders in `CodexAppServerProtocol.kt`.

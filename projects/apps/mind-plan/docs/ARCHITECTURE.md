@@ -2,7 +2,7 @@
 
 ## 목표
 
-`trip-plan`의 워크스페이스, AI 채팅 세션, SSE 응답, provider 추상화 패턴을 참고하되 도메인을 여행이 아니라 범용 계획 편집으로 바꾼다.
+`projects/apps/trip-plan`의 워크스페이스, AI 채팅 세션, SSE 응답, provider 추상화 패턴을 기준으로 삼되 도메인을 여행이 아니라 범용 계획 편집으로 바꾼다.
 
 ## UX 흐름
 
@@ -35,7 +35,7 @@ provider 결과는 사용자용 `message`와 적용용 `operations`로 분리한
 
 ## 1a80f46 반영 내용
 
-`trip-plan`의 `1a80f46` 커밋에서 채팅 스크롤 UX를 참고했다.
+`projects/apps/trip-plan`의 `1a80f46` 커밋에서 채팅 스크롤 UX를 반영했다.
 
 - 채팅 로그를 `chat-log-frame` 안의 독립 스크롤 컨테이너로 분리
 - 사용자가 하단 근처를 보고 있을 때만 자동 스크롤

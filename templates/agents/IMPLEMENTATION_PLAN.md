@@ -8,7 +8,7 @@
 - 재사용 문서와 시작 템플릿은 `templates/` 아래에서 관리한다.
 - 처음부터 여행 도메인을 이식하지 않는다.
 - 먼저 generic core를 세우고, 여행은 나중에 adapter 예제로 붙인다.
-- UI/UX는 `trip-plan` 앱의 채팅 UX를 참고한다.
+- UI/UX 기준은 `projects/apps/trip-plan`의 채팅 UX다.
 
 ## Phase 1: Project Scaffolding
 
@@ -45,7 +45,7 @@ templates/
 7. `ai_edit_run`
 8. `ai_provider_session`
 
-`trip-plan` 앱에서 참고해도 되는 영역:
+재사용 후보 영역:
 
 - chat event broker
 - chat run registry
@@ -83,7 +83,7 @@ domain.reorder_records
 8. Provider status
 9. Checkpoint rollback
 
-`trip-plan` 앱에서 참고할 UX:
+재사용할 UX 패턴:
 
 - active chat header
 - message meta
@@ -107,7 +107,7 @@ domain.reorder_records
 
 목표:
 
-- `trip-plan` 데이터 모델을 참고하되 generic `source_records`를 우선 사용한다.
+- `projects/apps/trip-plan` 데이터 모델은 예시로만 두고 generic `source_records`를 우선 사용한다.
 - 지도는 optional view로 둔다.
 
 ## Phase 7: External Bot

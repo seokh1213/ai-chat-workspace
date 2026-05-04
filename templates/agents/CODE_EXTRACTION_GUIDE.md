@@ -2,22 +2,22 @@
 
 새 skeleton에서 재사용할 구현 단위를 고를 때의 기준이다.
 
-## 재사용 참고 파일군
+## 재사용 후보 파일군
 
 ### AI Provider
 
 ```text
-backend/src/main/kotlin/app/tripplanner/ai/AiProvider.kt
-backend/src/main/kotlin/app/tripplanner/ai/AiProviderResponseParser.kt
-backend/src/main/kotlin/app/tripplanner/ai/ToolBlockStreamFilter.kt
-backend/src/main/kotlin/app/tripplanner/ai/JsonMessageFieldDeltaExtractor.kt
-backend/src/main/kotlin/app/tripplanner/ai/CodexAppServerClient.kt
-backend/src/main/kotlin/app/tripplanner/ai/CodexAppServerProvider.kt
-backend/src/main/kotlin/app/tripplanner/ai/CodexAppServerProtocol.kt
-backend/src/main/kotlin/app/tripplanner/ai/CodexAppServerProperties.kt
-backend/src/main/kotlin/app/tripplanner/ai/CodexAppServerProcessManager.kt
-backend/src/main/kotlin/app/tripplanner/ai/CodexAppServerTurnRegistry.kt
-backend/src/main/kotlin/app/tripplanner/ai/OpenAiStyleProviders.kt
+projects/apps/trip-plan/backend/src/main/kotlin/app/tripplanner/ai/AiProvider.kt
+projects/apps/trip-plan/backend/src/main/kotlin/app/tripplanner/ai/AiProviderResponseParser.kt
+projects/apps/trip-plan/backend/src/main/kotlin/app/tripplanner/ai/ToolBlockStreamFilter.kt
+projects/apps/trip-plan/backend/src/main/kotlin/app/tripplanner/ai/JsonMessageFieldDeltaExtractor.kt
+projects/apps/trip-plan/backend/src/main/kotlin/app/tripplanner/ai/CodexAppServerClient.kt
+projects/apps/trip-plan/backend/src/main/kotlin/app/tripplanner/ai/CodexAppServerProvider.kt
+projects/apps/trip-plan/backend/src/main/kotlin/app/tripplanner/ai/CodexAppServerProtocol.kt
+projects/apps/trip-plan/backend/src/main/kotlin/app/tripplanner/ai/CodexAppServerProperties.kt
+projects/apps/trip-plan/backend/src/main/kotlin/app/tripplanner/ai/CodexAppServerProcessManager.kt
+projects/apps/trip-plan/backend/src/main/kotlin/app/tripplanner/ai/CodexAppServerTurnRegistry.kt
+projects/apps/trip-plan/backend/src/main/kotlin/app/tripplanner/ai/OpenAiStyleProviders.kt
 ```
 
 수정 필요:
@@ -30,10 +30,10 @@ backend/src/main/kotlin/app/tripplanner/ai/OpenAiStyleProviders.kt
 ### Chat
 
 ```text
-backend/src/main/kotlin/app/tripplanner/chat/ChatEventBroker.kt
-backend/src/main/kotlin/app/tripplanner/chat/ChatRunRegistry.kt
-backend/src/main/kotlin/app/tripplanner/chat/ChatRunMapping.kt
-backend/src/main/kotlin/app/tripplanner/chat/ChatRunService.kt
+projects/apps/trip-plan/backend/src/main/kotlin/app/tripplanner/chat/ChatEventBroker.kt
+projects/apps/trip-plan/backend/src/main/kotlin/app/tripplanner/chat/ChatRunRegistry.kt
+projects/apps/trip-plan/backend/src/main/kotlin/app/tripplanner/chat/ChatRunMapping.kt
+projects/apps/trip-plan/backend/src/main/kotlin/app/tripplanner/chat/ChatRunService.kt
 ```
 
 수정 필요:
@@ -44,7 +44,7 @@ backend/src/main/kotlin/app/tripplanner/chat/ChatRunService.kt
 
 ### Frontend
 
-`frontend/src/App.tsx`에서 한 번에 복사하지 말고 아래 단위로 쪼갠다.
+`projects/apps/trip-plan/frontend/src/App.tsx`에서 한 번에 옮기지 말고 아래 단위로 쪼갠다.
 
 - MarkdownContent
 - ChatMessageBubble

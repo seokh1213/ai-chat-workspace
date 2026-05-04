@@ -12,4 +12,4 @@
 - Markdown streaming renderer
 - provider settings UI
 
-다음 AI Agent는 `../../docs/04_FRONTEND_BLUEPRINT.md`를 따른다.
+다음 AI Agent는 `templates/docs/04_FRONTEND_BLUEPRINT.md`를 따른다.
