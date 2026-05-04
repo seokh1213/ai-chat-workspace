@@ -2,7 +2,7 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: trip-plan
-  namespace: trip-plan
+  namespace: dev
   labels:
     app.kubernetes.io/name: trip-plan
     app.kubernetes.io/part-of: trip-plan

@@ -2,7 +2,7 @@ apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
   name: trip-plan-app-ingress
-  namespace: trip-plan
+  namespace: dev
 spec:
   podSelector:
     matchLabels:
@@ -22,7 +22,7 @@ apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
   name: trip-plan-postgres-ingress
-  namespace: trip-plan
+  namespace: dev
 spec:
   podSelector:
     matchLabels:
@@ -42,7 +42,7 @@ apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
   name: trip-plan-codex-ingress
-  namespace: trip-plan
+  namespace: dev
 spec:
   podSelector:
     matchLabels:
