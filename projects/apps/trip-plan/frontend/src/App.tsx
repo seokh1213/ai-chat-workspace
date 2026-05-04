@@ -1863,6 +1863,7 @@ function EditorScreen(props: {
   const [isAddingItem, setIsAddingItem] = useState(false);
   const [isAddingPlace, setIsAddingPlace] = useState(false);
   const [focusedMapPlaceId, setFocusedMapPlaceId] = useState<string | null>(null);
+  const [shouldCenterFocusedPlace, setShouldCenterFocusedPlace] = useState(false);
   const [detailHighlight, setDetailHighlight] = useState<{ type: "item" | "place"; id: string } | null>(null);
   const activeChatSession = props.chatSessions.find((session) => session.id === props.activeChatId) ?? null;
   const [chatTitleDraft, setChatTitleDraft] = useState(activeChatSession?.title ?? "");
@@ -2094,9 +2095,25 @@ function EditorScreen(props: {
     }
     props.onFocusItem(null);
     setFocusedMapPlaceId(placeId);
+    setShouldCenterFocusedPlace(true);
     setMobileView("map");
     focusClearTimerRef.current = window.setTimeout(() => {
       setFocusedMapPlaceId(null);
+      setShouldCenterFocusedPlace(false);
+      focusClearTimerRef.current = null;
+    }, 2000);
+  }
+
+  function highlightPlaceOnMap(placeId: string) {
+    if (focusClearTimerRef.current != null) {
+      window.clearTimeout(focusClearTimerRef.current);
+    }
+    props.onFocusItem(null);
+    setFocusedMapPlaceId(placeId);
+    setShouldCenterFocusedPlace(false);
+    focusClearTimerRef.current = window.setTimeout(() => {
+      setFocusedMapPlaceId(null);
+      setShouldCenterFocusedPlace(false);
       focusClearTimerRef.current = null;
     }, 2000);
   }
@@ -2112,6 +2129,7 @@ function EditorScreen(props: {
     }
     setDetailHighlight({ type: "item", id: itemId });
     setFocusedMapPlaceId(null);
+    setShouldCenterFocusedPlace(false);
     setMobileView("details");
     if (props.scheduleCollapsed) props.onToggleSchedule();
     suppressDetailHighlightClearRef.current = true;
@@ -2131,6 +2149,7 @@ function EditorScreen(props: {
     }
     setDetailHighlight({ type: "place", id: placeId });
     setFocusedMapPlaceId(null);
+    setShouldCenterFocusedPlace(false);
     setMobileView("details");
     if (props.placesCollapsed) props.onTogglePlaces();
     suppressDetailHighlightClearRef.current = true;
@@ -2586,7 +2605,8 @@ function EditorScreen(props: {
           selectedDay={props.selectedDay}
           focusedItemId={props.focusedItemId}
           focusedPlaceId={focusedMapPlaceId}
-          onFocusPlace={focusPlaceOnMapById}
+          centerFocusedPlace={shouldCenterFocusedPlace}
+          onFocusPlace={highlightPlaceOnMap}
           onShowItemDetails={showItemDetails}
           onShowPlaceDetails={showPlaceDetails}
           layoutKey={`${mobileView}-${props.plannerCollapsed}-${props.chatCollapsed}-${props.layout.plannerWidth}-${props.layout.chatWidth}-${props.layout.placesHeight}`}
@@ -3279,6 +3299,7 @@ function MapCanvas(props: {
   dayItems: ItineraryItem[];
   focusedItemId: string | null;
   focusedPlaceId: string | null;
+  centerFocusedPlace: boolean;
   onFocusPlace: (placeId: string) => void;
   onShowItemDetails: (itemId: string) => void;
   onShowPlaceDetails: (placeId: string) => void;
@@ -3428,7 +3449,9 @@ function MapCanvas(props: {
       if (isFocusedPlace) {
         openPopupPlaceIdRef.current = place.id;
         marker.openPopup();
-        focusMapPoint(map, point, Math.max(map.getZoom(), 14));
+        if (props.centerFocusedPlace) {
+          focusMapPoint(map, point, Math.max(map.getZoom(), 14));
+        }
       } else if (shouldKeepOpenPlace) {
         marker.openPopup();
       }
@@ -3488,7 +3511,7 @@ function MapCanvas(props: {
 
     window.setTimeout(() => map.invalidateSize(), 0);
     rebuildingLayersRef.current = false;
-  }, [props.dayItems, props.focusedItemId, props.focusedPlaceId, props.selectedDay?.id, props.tripState]);
+  }, [props.centerFocusedPlace, props.dayItems, props.focusedItemId, props.focusedPlaceId, props.selectedDay?.id, props.tripState]);
 
   return (
     <div className="map-canvas">
