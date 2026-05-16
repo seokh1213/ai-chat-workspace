@@ -175,14 +175,17 @@ export function useChatEventStream({
     };
     const refreshCompletedRun = async (run: AiEditRunSummary | null) => {
       try {
-        if (activeChatId) {
-          const detail = await getChatSession(activeChatId);
+        if (isDisposed) return;
+        if (eventSessionId) {
+          const detail = await getChatSession(eventSessionId);
+          if (isDisposed) return;
           setChatSessions((current) => current.map((session) => (session.id === detail.session.id ? detail.session : session)));
           setMessages(detail.messages);
           setEditRuns(detail.editRuns);
         }
         if (run?.status === "applied" && tripId) {
           const nextState = await getTripState(tripId);
+          if (isDisposed) return;
           setTripState(nextState);
           setSelectedDayId((currentDayId) =>
             nextState.days.some((day) => day.id === currentDayId) ? currentDayId : nextState.days[0]?.id ?? ""
@@ -191,7 +194,7 @@ export function useChatEventStream({
       } catch (nextError) {
         console.debug("chat stream final refresh failed", nextError);
       } finally {
-        clearLocalSendingState();
+        if (!isDisposed) clearLocalSendingState();
       }
     };
     const onCompleted = (event: MessageEvent) => {
@@ -283,8 +286,9 @@ export function useChatEventStream({
         if (run?.id) {
           setEditRuns((current) => [run, ...current.filter((candidate) => candidate.id !== run.id)]);
         }
-        if (activeChatId) {
-          void getChatSession(activeChatId).then((detail) => {
+        if (eventSessionId) {
+          void getChatSession(eventSessionId).then((detail) => {
+            if (isDisposed) return;
             setChatSessions((current) => current.map((session) => (session.id === detail.session.id ? detail.session : session)));
             setMessages(detail.messages);
             setEditRuns(detail.editRuns);

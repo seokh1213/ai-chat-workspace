@@ -10,7 +10,7 @@ import {
   updateChatSession
 } from "../api";
 import type { AiEditRunSummary, ChatAttachment, ChatMessage, ChatSession, Trip, TripDay, TripState } from "../types";
-import { buildChatSessionMarkdown, isAbortError, sortChatMessages } from "./chat";
+import { buildChatSessionMarkdown, isAbortError, makeLocalAssistantMessage, sortChatMessages } from "./chat";
 import { readChatDraft, removeChatDraft, writeChatDraft } from "./chatDraft";
 import { writeClipboardText } from "./dom";
 import { readError } from "./format";
@@ -44,6 +44,9 @@ export function useTripChat({
   const [isChatSessionCreating, setIsChatSessionCreating] = useState(false);
   const chatAbortControllerRef = useRef<AbortController | null>(null);
   const chatLoadRequestRef = useRef(0);
+  const chatSendRequestRef = useRef(0);
+  const chatSessionIdRef = useRef("");
+  const isChatSendingRef = useRef(false);
   const {
     pendingChatAttachments,
     clearPendingChatAttachments,
@@ -66,13 +69,36 @@ export function useTripChat({
     writeChatDraft(tripId, activeChatId, chatText);
   }, [activeChatId, activeTrip?.id, chatText]);
 
+  useEffect(() => {
+    chatSessionIdRef.current = chatSessionId;
+  }, [chatSessionId]);
+
+  useEffect(() => {
+    isChatSendingRef.current = chatStream.isChatSending;
+  }, [chatStream.isChatSending]);
+
   function cancelChatLoading() {
     ++chatLoadRequestRef.current;
     setIsChatSessionsLoading(false);
     setIsChatDetailLoading(false);
   }
 
-  function prepareTripOpen() {
+  function cancelActiveLocalChat() {
+    ++chatSendRequestRef.current;
+    chatAbortControllerRef.current?.abort();
+    chatAbortControllerRef.current = null;
+    chatStream.stopLocally();
+  }
+
+  function resetChatState() {
+    const runningSessionId = chatSessionIdRef.current;
+    cancelChatLoading();
+    cancelActiveLocalChat();
+    if (runningSessionId && isChatSendingRef.current) {
+      void cancelCurrentChatRun(runningSessionId).catch((nextError) => {
+        console.debug("chat run cancel failed", nextError);
+      });
+    }
     clearPendingChatAttachments();
     setChatSessions([]);
     setChatSessionId("");
@@ -130,6 +156,7 @@ export function useTripChat({
   async function selectChatSession(sessionId: string) {
     if (sessionId === chatSessionId) return;
     const requestId = ++chatLoadRequestRef.current;
+    cancelActiveLocalChat();
     clearPendingChatAttachments();
     setChatText(activeTrip ? readChatDraft(activeTrip.id, sessionId) : "");
     setChatSessionId(sessionId);
@@ -164,6 +191,7 @@ export function useTripChat({
       const title = selectedDay ? `Day ${selectedDay.dayNumber} 일정 조율` : `전체 일정 조율 ${chatSessions.length + 1}`;
       const session = await createChatSession(activeTrip.id, title);
       ++chatLoadRequestRef.current;
+      cancelActiveLocalChat();
       clearPendingChatAttachments();
       setChatSessions((current) => [session, ...current]);
       setChatSessionId(session.id);
@@ -181,6 +209,7 @@ export function useTripChat({
   function openChatList() {
     if (!activeTrip) return;
     ++chatLoadRequestRef.current;
+    cancelActiveLocalChat();
     clearPendingChatAttachments();
     setChatSessionId("");
     setActiveChatId(null);
@@ -255,20 +284,24 @@ export function useTripChat({
       .filter((item) => item.status === "ready" && item.attachment)
       .map((item) => item.attachment as ChatAttachment);
     if ((!content && readyAttachments.length === 0) || !chatSessionId) return;
+    if (chatStream.isChatSending) return;
     if (pendingChatAttachments.some((item) => item.status === "queued" || item.status === "uploading")) return;
     if (pendingChatAttachments.some((item) => item.status === "failed")) {
       window.alert("업로드에 실패한 첨부를 제거한 뒤 전송해 주세요.");
       return;
     }
 
+    const sessionId = chatSessionId;
     const abortController = new AbortController();
+    const requestId = ++chatSendRequestRef.current;
+    const isCurrentSend = () => chatSendRequestRef.current === requestId && chatSessionIdRef.current === sessionId;
     chatAbortControllerRef.current = abortController;
     chatStream.startRequest();
     setChatText("");
     const startedAt = performance.now();
     const localUserMessage: ChatMessage = {
       id: `local_user_${Date.now()}`,
-      chatSessionId,
+      chatSessionId: sessionId,
       role: "user",
       content,
       status: "pending",
@@ -279,7 +312,8 @@ export function useTripChat({
     setMessages((current) => [...current, localUserMessage]);
     let accepted = false;
     try {
-      const run = await sendChatMessage(chatSessionId, content, readyAttachments.map((attachment) => attachment.id), abortController.signal);
+      const run = await sendChatMessage(sessionId, content, readyAttachments.map((attachment) => attachment.id), abortController.signal);
+      if (!isCurrentSend()) return;
       accepted = true;
       clearPendingChatAttachments(false);
       chatStream.markRunAccepted(run.runId);
@@ -290,26 +324,27 @@ export function useTripChat({
         ])
       );
     } catch (nextError) {
+      if (!isCurrentSend()) return;
       if (isAbortError(nextError)) {
         chatStream.markAbortHandled();
         setMessages((current) => [
           ...current.map((message) =>
             message.id === localUserMessage.id ? { ...message, status: "completed" } : message
           ),
-          makeLocalAssistantMessage(chatSessionId, "응답 생성을 중지했습니다. 변경 사항은 적용하지 않습니다.", "cancelled", startedAt)
+          makeLocalAssistantMessage(sessionId, "응답 생성을 중지했습니다. 변경 사항은 적용하지 않습니다.", "cancelled", startedAt)
         ]);
         return;
       }
       setMessages((current) => [
         ...current,
-        makeLocalAssistantMessage(chatSessionId, `요청을 처리하지 못했습니다. ${readError(nextError)}`, "failed", startedAt)
+        makeLocalAssistantMessage(sessionId, `요청을 처리하지 못했습니다. ${readError(nextError)}`, "failed", startedAt)
       ]);
       chatStream.markSendFailure();
     } finally {
       if (chatAbortControllerRef.current === abortController) {
         chatAbortControllerRef.current = null;
       }
-      if (!accepted) chatStream.completeUnacceptedSend(abortController.signal.aborted);
+      if (isCurrentSend() && !accepted) chatStream.completeUnacceptedSend(abortController.signal.aborted);
     }
   }
 
@@ -343,8 +378,8 @@ export function useTripChat({
     chatElapsedSeconds: chatStream.chatElapsedSeconds,
     chatStreamingText: chatStream.chatStreamingText,
     chatOperationPreview: chatStream.chatOperationPreview,
-    cancelChatLoading,
-    prepareTripOpen,
+    prepareTripOpen: resetChatState,
+    resetChatState,
     loadChat,
     selectChatSession,
     createNextChatSession,
@@ -362,22 +397,4 @@ export function useTripChat({
 
 function pushChatPath(tripId: string, sessionId: string) {
   pushAppPath(`/trips/${encodeURIComponent(tripId)}/chat/${encodeURIComponent(sessionId)}`);
-}
-
-function makeLocalAssistantMessage(
-  chatSessionId: string,
-  content: string,
-  status: string,
-  startedAt: number
-): ChatMessage {
-  return {
-    id: `local_assistant_${Date.now()}`,
-    chatSessionId,
-    role: "assistant",
-    content,
-    status,
-    metadataJson: JSON.stringify({ durationMs: performance.now() - startedAt }),
-    createdAt: new Date().toISOString(),
-    attachments: []
-  };
 }

@@ -14,7 +14,7 @@ interface UseTripRouteActionsProps {
   loadWorkspaces: () => Promise<unknown>;
   loadChat: (tripId: string, preferredSessionId?: string) => Promise<void>;
   prepareTripOpen: () => void;
-  cancelChatLoading: () => void;
+  resetChatState: () => void;
   setLoadState: Dispatch<SetStateAction<LoadState>>;
   setError: Dispatch<SetStateAction<string | null>>;
   setIsTripOpening: Dispatch<SetStateAction<boolean>>;
@@ -32,7 +32,7 @@ export function useTripRouteActions({
   loadWorkspaces,
   loadChat,
   prepareTripOpen,
-  cancelChatLoading,
+  resetChatState,
   setLoadState,
   setError,
   setIsTripOpening,
@@ -54,7 +54,7 @@ export function useTripRouteActions({
       const route = parseRoute();
       if (route.screen === "create") {
         ++tripOpenRequestRef.current;
-        cancelChatLoading();
+        resetChatState();
         setIsTripOpening(false);
         setTripState(null);
         setScreen("create");
@@ -65,7 +65,7 @@ export function useTripRouteActions({
         return;
       }
       ++tripOpenRequestRef.current;
-      cancelChatLoading();
+      resetChatState();
       setIsTripOpening(false);
       setTripState(null);
       setScreen("select");
@@ -126,7 +126,7 @@ export function useTripRouteActions({
 
   function navigateToCreate() {
     ++tripOpenRequestRef.current;
-    cancelChatLoading();
+    resetChatState();
     setIsTripOpening(false);
     setTripState(null);
     setScreen("create");
@@ -135,7 +135,7 @@ export function useTripRouteActions({
 
   function navigateToSelect() {
     ++tripOpenRequestRef.current;
-    cancelChatLoading();
+    resetChatState();
     setIsTripOpening(false);
     setTripState(null);
     setScreen("select");

@@ -56,6 +56,24 @@ export function sortChatMessages(messages: ChatMessage[]): ChatMessage[] {
   });
 }
 
+export function makeLocalAssistantMessage(
+  chatSessionId: string,
+  content: string,
+  status: string,
+  startedAt: number
+): ChatMessage {
+  return {
+    id: `local_assistant_${Date.now()}`,
+    chatSessionId,
+    role: "assistant",
+    content,
+    status,
+    metadataJson: JSON.stringify({ durationMs: performance.now() - startedAt }),
+    createdAt: new Date().toISOString(),
+    attachments: []
+  };
+}
+
 export function isTerminalChatRunStatus(status: string): boolean {
   return status === "applied" || status === "completed" || status === "failed" || status === "cancelled";
 }

@@ -58,7 +58,27 @@ internal fun TripOperation.mapOrNull(key: String): TripOperation? =
 
 @Suppress("UNCHECKED_CAST")
 internal fun TripOperation.mapList(key: String): TripOperations =
-    (this[key] as? List<*>)?.mapNotNull { it as? TripOperation }.orEmpty()
+    (this[key] as? List<*>)
+        ?.mapIndexed { index, item ->
+            item as? TripOperation ?: throw IllegalArgumentException("Expected object at $key[$index].")
+        }
+        ?: throw IllegalArgumentException("Missing required list field: $key")
+
+internal fun TripOperations.validateReplacementItems() {
+    forEachIndexed { index, item ->
+        val explicitPlace = item["place"]
+        val placePayload = item.mapOrNull("place")
+        require(explicitPlace == null || placePayload != null) { "Expected object at items[$index].place." }
+        val title = item.stringOrNull("title")?.trim()
+        val placeName = placePayload?.stringOrNull("name")?.trim()
+        if (placePayload != null) {
+            require(!placeName.isNullOrBlank()) { "Place name must not be blank at items[$index].place." }
+        }
+        require(!title.isNullOrBlank() || !placeName.isNullOrBlank()) {
+            "Itinerary item title must not be blank at items[$index]."
+        }
+    }
+}
 
 internal fun TripOperation.stringList(key: String): List<String> =
     (this[key] as? List<*>)?.mapNotNull { it?.toString() }.orEmpty()

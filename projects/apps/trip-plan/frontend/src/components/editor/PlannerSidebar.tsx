@@ -1,5 +1,5 @@
 import { Bot, ChevronLeft, PanelLeftClose } from "lucide-react";
-import type { FormEvent, PointerEvent as ReactPointerEvent } from "react";
+import type { FormEvent, KeyboardEvent as ReactKeyboardEvent, PointerEvent as ReactPointerEvent } from "react";
 
 import { mobileDayLabel } from "../../lib/tripDisplay";
 import type {
@@ -17,6 +17,7 @@ import { ScheduleSection } from "./ScheduleSection";
 interface PlannerSidebarProps {
   tripState: TripState;
   selectedDayId: string;
+  placesHeight: number;
   dayItems: ItineraryItem[];
   itemCountByDay: Map<string, number>;
   routeNumbers: Map<string, number>;
@@ -45,6 +46,7 @@ interface PlannerSidebarProps {
   onToggleSchedule: () => void;
   onTogglePlaces: () => void;
   onStartPlacesResize: (event: ReactPointerEvent) => void;
+  onResizePlacesByKey: (event: ReactKeyboardEvent) => void;
   onStartAddItem: () => void;
   onItemFormChange: (form: UpsertItineraryItemRequest) => void;
   onSubmitItem: (event: FormEvent) => void;
@@ -141,7 +143,12 @@ export function PlannerSidebar(props: PlannerSidebarProps) {
             role="separator"
             aria-label="일정과 조사 장소 높이 조절"
             aria-orientation="horizontal"
+            aria-valuemin={190}
+            aria-valuemax={520}
+            aria-valuenow={props.placesHeight}
+            tabIndex={0}
             onPointerDown={props.onStartPlacesResize}
+            onKeyDown={props.onResizePlacesByKey}
           />
         ) : null}
 

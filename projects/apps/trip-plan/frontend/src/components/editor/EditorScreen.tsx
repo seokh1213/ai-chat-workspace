@@ -106,6 +106,7 @@ export function EditorScreen(props: EditorScreenProps) {
         <PlannerSidebar
           tripState={props.tripState}
           selectedDayId={props.selectedDayId}
+          placesHeight={props.layout.placesHeight}
           dayItems={props.dayItems}
           itemCountByDay={state.itemCountByDay}
           routeNumbers={state.routeNumbers}
@@ -134,6 +135,7 @@ export function EditorScreen(props: EditorScreenProps) {
           onToggleSchedule={props.onToggleSchedule}
           onTogglePlaces={props.onTogglePlaces}
           onStartPlacesResize={state.startPlacesResize}
+          onResizePlacesByKey={state.resizePlacesByKey}
           onStartAddItem={state.startAddItem}
           onItemFormChange={props.onItemFormChange}
           onSubmitItem={state.submitItemForm}
@@ -147,7 +149,10 @@ export function EditorScreen(props: EditorScreenProps) {
           onSubmitPlace={state.submitPlaceForm}
           onCancelPlace={state.cancelPlaceForm}
           onFocusPlaceOnMap={state.focusPlaceOnMap}
-          onUsePlace={props.onUsePlace}
+          onUsePlace={(place) => {
+            state.startAddItem();
+            props.onUsePlace(place);
+          }}
           onEditPlace={props.onEditPlace}
           onDeletePlace={props.onDeletePlace}
           onToggleExpandedPlace={state.toggleExpandedPlace}
@@ -164,7 +169,12 @@ export function EditorScreen(props: EditorScreenProps) {
           role="separator"
           aria-label="왼쪽 패널 너비 조절"
           aria-orientation="vertical"
+          aria-valuemin={420}
+          aria-valuemax={580}
+          aria-valuenow={props.layout.plannerWidth}
+          tabIndex={0}
           onPointerDown={(event) => state.startPanelResize(event, "planner")}
+          onKeyDown={(event) => state.resizePanelByKey(event, "planner")}
         />
       ) : null}
 
@@ -195,7 +205,12 @@ export function EditorScreen(props: EditorScreenProps) {
           role="separator"
           aria-label="AI 대화 패널 너비 조절"
           aria-orientation="vertical"
+          aria-valuemin={360}
+          aria-valuemax={560}
+          aria-valuenow={props.layout.chatWidth}
+          tabIndex={0}
           onPointerDown={(event) => state.startPanelResize(event, "chat")}
+          onKeyDown={(event) => state.resizePanelByKey(event, "chat")}
         />
       ) : null}
 

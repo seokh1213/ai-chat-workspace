@@ -1,4 +1,4 @@
-import { type Dispatch, type FormEvent, type SetStateAction, useState } from "react";
+import { type Dispatch, type FormEvent, type SetStateAction, useEffect, useRef, useState } from "react";
 
 import { createTrip, importSetupChatSession, sendSetupAssistantMessage } from "../api";
 import type { SetupAssistantMessage, Trip, TripFormState } from "../types";
@@ -23,6 +23,11 @@ export function useSetupTripCreator({ workspaceId, setTrips, enterTrip }: UseSet
   const [setupMessages, setSetupMessages] = useState<SetupAssistantMessage[]>([setupIntro]);
   const [setupChatText, setSetupChatText] = useState("");
   const [isSetupSending, setIsSetupSending] = useState(false);
+  const tripFormRef = useRef(tripForm);
+
+  useEffect(() => {
+    tripFormRef.current = tripForm;
+  }, [tripForm]);
 
   async function submitTrip(event: FormEvent) {
     event.preventDefault();
@@ -60,10 +65,8 @@ export function useSetupTripCreator({ workspaceId, setTrips, enterTrip }: UseSet
     setIsSetupSending(true);
     try {
       const response = await sendSetupAssistantMessage(content, normalizeTripForm(tripForm), setupMessages);
-      const applied = applySetupActions(tripForm, response.actions);
-      if (applied.changed) {
-        setTripForm(applied.form);
-      }
+      const applied = applySetupActions(tripFormRef.current, response.actions);
+      if (applied.changed) setTripForm(applied.form);
       setSetupMessages([
         ...nextMessages,
         {

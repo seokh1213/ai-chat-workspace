@@ -2,6 +2,7 @@ import {
   type CSSProperties,
   type Dispatch,
   type FormEvent,
+  type KeyboardEvent as ReactKeyboardEvent,
   type PointerEvent as ReactPointerEvent,
   type SetStateAction,
   useEffect,
@@ -90,9 +91,11 @@ export interface EditorScreenState {
   createChatSession: () => void;
   selectChatSession: (sessionId: string) => void;
   startPanelResize: (event: ReactPointerEvent, panel: "planner" | "chat") => void;
+  resizePanelByKey: (event: ReactKeyboardEvent, panel: "planner" | "chat") => void;
   toggleExpandedItem: (itemId: string) => void;
   toggleExpandedPlace: (placeId: string) => void;
   startPlacesResize: (event: ReactPointerEvent) => void;
+  resizePlacesByKey: (event: ReactKeyboardEvent) => void;
 }
 
 export function useEditorScreenState(props: UseEditorScreenStateProps): EditorScreenState {
@@ -266,6 +269,17 @@ export function useEditorScreenState(props: UseEditorScreenStateProps): EditorSc
     window.addEventListener("pointerup", handleUp, { once: true });
   }
 
+  function resizePanelByKey(event: ReactKeyboardEvent, panel: "planner" | "chat") {
+    const deltaX = event.key === "ArrowLeft" ? -24 : event.key === "ArrowRight" ? 24 : 0;
+    if (!deltaX) return;
+    event.preventDefault();
+    props.onLayoutChange({
+      ...props.layout,
+      plannerWidth: panel === "planner" ? clampNumber(props.layout.plannerWidth + deltaX, 420, 580) : props.layout.plannerWidth,
+      chatWidth: panel === "chat" ? clampNumber(props.layout.chatWidth - deltaX, 360, 560) : props.layout.chatWidth
+    });
+  }
+
   function toggleSetValue(setter: Dispatch<SetStateAction<Set<string>>>, id: string) {
     setter((current) => {
       const next = new Set(current);
@@ -296,6 +310,16 @@ export function useEditorScreenState(props: UseEditorScreenStateProps): EditorSc
     window.addEventListener("pointerup", handleUp, { once: true });
   }
 
+  function resizePlacesByKey(event: ReactKeyboardEvent) {
+    const deltaY = event.key === "ArrowUp" ? -24 : event.key === "ArrowDown" ? 24 : 0;
+    if (!deltaY) return;
+    event.preventDefault();
+    props.onLayoutChange({
+      ...props.layout,
+      placesHeight: clampNumber(props.layout.placesHeight - deltaY, 190, 520)
+    });
+  }
+
   return {
     editorClassName,
     layoutStyle,
@@ -324,8 +348,18 @@ export function useEditorScreenState(props: UseEditorScreenStateProps): EditorSc
       setIsAddingPlace(false);
       props.onCancelEditPlace();
     },
-    submitItemForm: (event) => void Promise.resolve(props.onSubmitItem(event)).then(() => setIsAddingItem(false)),
-    submitPlaceForm: (event) => void Promise.resolve(props.onSubmitPlace(event)).then(() => setIsAddingPlace(false)),
+    submitItemForm: (event) => {
+      const canSubmit = Boolean(props.itemForm.title.trim());
+      void Promise.resolve(props.onSubmitItem(event)).then(() => {
+        if (canSubmit) setIsAddingItem(false);
+      });
+    },
+    submitPlaceForm: (event) => {
+      const canSubmit = Boolean(props.placeForm.name.trim());
+      void Promise.resolve(props.onSubmitPlace(event)).then(() => {
+        if (canSubmit) setIsAddingPlace(false);
+      });
+    },
     focusItemOnMap,
     focusPlaceOnMap: (place) => focusPlaceOnMapById(place.id, true),
     highlightPlaceOnMap: (placeId) => focusPlaceOnMapById(placeId, false),
@@ -353,8 +387,10 @@ export function useEditorScreenState(props: UseEditorScreenStateProps): EditorSc
       props.onSelectChatSession(sessionId);
     },
     startPanelResize,
+    resizePanelByKey,
     toggleExpandedItem: (itemId) => toggleSetValue(setExpandedItems, itemId),
     toggleExpandedPlace: (placeId) => toggleSetValue(setExpandedPlaces, placeId),
-    startPlacesResize
+    startPlacesResize,
+    resizePlacesByKey
   };
 }

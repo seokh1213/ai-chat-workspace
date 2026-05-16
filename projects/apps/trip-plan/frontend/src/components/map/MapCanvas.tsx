@@ -55,6 +55,7 @@ export function MapCanvas({
   const tileLayerRef = useRef<L.TileLayer | null>(null);
   const skipNextAutoFitRef = useRef(false);
   const hasPersistedMapViewRef = useRef(false);
+  const suppressPersistUntilRef = useRef(0);
   const openPopupItemIdRef = useRef<string | null>(null);
   const openPopupPlaceIdRef = useRef<string | null>(null);
   const rebuildingLayersRef = useRef(false);
@@ -81,6 +82,7 @@ export function MapCanvas({
     layerRef.current = L.layerGroup().addTo(map);
     mapRef.current = map;
     const persistMapView = () => {
+      if (Date.now() < suppressPersistUntilRef.current) return;
       hasPersistedMapViewRef.current = true;
       writeMapView(map, trip.id);
     };
@@ -249,11 +251,14 @@ export function MapCanvas({
       if (skipNextAutoFitRef.current || hasPersistedMapViewRef.current) {
         skipNextAutoFitRef.current = false;
       } else if (dayPoints.length > 0) {
-        map.fitBounds(L.latLngBounds(dayPoints), { padding: [48, 48], maxZoom: 14 });
+        suppressPersistUntilRef.current = Date.now() + 500;
+        map.fitBounds(L.latLngBounds(dayPoints), { padding: [48, 48], maxZoom: 14, animate: false });
       } else if (allPoints.length > 0) {
-        map.fitBounds(L.latLngBounds(allPoints), { padding: [48, 48], maxZoom: 13 });
+        suppressPersistUntilRef.current = Date.now() + 500;
+        map.fitBounds(L.latLngBounds(allPoints), { padding: [48, 48], maxZoom: 13, animate: false });
       } else {
-        map.setView(destinationCenter(tripState.trip), 11);
+        suppressPersistUntilRef.current = Date.now() + 500;
+        map.setView(destinationCenter(tripState.trip), 11, { animate: false });
       }
     }
 

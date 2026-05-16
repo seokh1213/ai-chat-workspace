@@ -94,6 +94,12 @@ export function usePendingChatAttachments(activeChatId: string | null) {
       });
       try {
         const attachment = await uploadChatAttachment(activeChatId, pending.file);
+        if (!pendingChatAttachmentsRef.current.some((item) => item.localId === pending.localId)) {
+          void deleteChatAttachment(attachment.chatSessionId, attachment.id).catch((nextError) => {
+            console.debug("chat attachment cleanup failed", nextError);
+          });
+          continue;
+        }
         setPendingChatAttachments((current) => {
           const next = current.map((item) =>
             item.localId === pending.localId

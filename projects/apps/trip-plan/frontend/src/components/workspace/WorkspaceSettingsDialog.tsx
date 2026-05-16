@@ -1,5 +1,5 @@
 import { X } from "lucide-react";
-import type { FormEvent } from "react";
+import { useEffect, useRef, type FormEvent, type KeyboardEvent } from "react";
 
 import {
   aiEffortOptions,
@@ -13,6 +13,15 @@ import {
 import type { AiProviderStatus, Workspace } from "../../types";
 import { ProviderStatusCard } from "./ProviderStatusCard";
 
+const focusableSelector = [
+  "button:not([disabled])",
+  "input:not([disabled])",
+  "select:not([disabled])",
+  "textarea:not([disabled])",
+  "[href]",
+  '[tabindex]:not([tabindex="-1"])'
+].join(",");
+
 export function WorkspaceSettingsDialog(props: {
   workspace: Workspace;
   form: WorkspaceSettingsForm;
@@ -21,6 +30,7 @@ export function WorkspaceSettingsDialog(props: {
   onSubmit: (event: FormEvent) => void;
   onClose: () => void;
 }) {
+  const dialogRef = useRef<HTMLElement | null>(null);
   const providerOption = aiProviderOptions.find((option) => option.value === props.form.aiProvider) ?? aiProviderOptions[0];
   const isCodex = providerOption.value === "codex-app-server";
   const isOpenAiCompatible = providerOption.value === "openai-compatible";
@@ -41,9 +51,46 @@ export function WorkspaceSettingsDialog(props: {
     });
   };
 
+  useEffect(() => {
+    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const firstField = dialogRef.current?.querySelector<HTMLElement>(focusableSelector);
+    firstField?.focus();
+    return () => previousFocus?.focus();
+  }, []);
+
+  function handleDialogKeyDown(event: KeyboardEvent<HTMLElement>) {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      props.onClose();
+      return;
+    }
+    if (event.key !== "Tab") return;
+
+    const focusable = Array.from(dialogRef.current?.querySelectorAll<HTMLElement>(focusableSelector) ?? [])
+      .filter((element) => element.offsetParent !== null || element === document.activeElement);
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (!first || !last) return;
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  }
+
   return (
     <div className="settings-overlay" role="presentation">
-      <section className="settings-dialog" role="dialog" aria-modal="true" aria-labelledby="workspace-settings-title">
+      <section
+        ref={dialogRef}
+        className="settings-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="workspace-settings-title"
+        tabIndex={-1}
+        onKeyDown={handleDialogKeyDown}
+      >
         <div className="settings-header">
           <div>
             <p className="eyebrow">Workspace settings</p>

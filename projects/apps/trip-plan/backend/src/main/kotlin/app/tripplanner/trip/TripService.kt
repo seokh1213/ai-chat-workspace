@@ -559,8 +559,10 @@ class TripService(
             "Locked items cannot be replaced."
         }
 
+        val replacementItems = operation.mapList("items")
+        replacementItems.validateReplacementItems()
         repository.deleteItemsByDay(day.id)
-        operation.mapList("items").forEach { item ->
+        replacementItems.forEach { item ->
             applyAddItem(
                 tripId = tripId,
                 operation = mapOf("op" to "add_item", "day" to day.dayNumber, "item" to item),
