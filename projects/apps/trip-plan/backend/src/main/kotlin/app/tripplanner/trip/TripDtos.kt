@@ -1,5 +1,8 @@
 package app.tripplanner.trip
 
+typealias TripOperation = Map<String, Any?>
+typealias TripOperations = List<TripOperation>
+
 data class TripDto(
     val id: String,
     val workspaceId: String,
@@ -111,7 +114,7 @@ data class UpsertItineraryItemRequest(
 data class ApplyOperationsRequest(
     val reason: String? = null,
     val source: String = "ui",
-    val operations: List<Map<String, Any?>> = emptyList(),
+    val operations: TripOperations = emptyList(),
 )
 
 data class ApplyOperationsResponse(

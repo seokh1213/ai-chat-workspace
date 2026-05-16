@@ -1,9 +1,10 @@
 package app.tripplanner.ai
 
+import app.tripplanner.trip.TripOperations
+import app.tripplanner.trip.readTripOperations
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
-import com.fasterxml.jackson.module.kotlin.readValue
 import org.springframework.stereotype.Component
 
 @Component
@@ -90,13 +91,13 @@ class AiProviderResponseParser {
     private fun parseResultNode(node: JsonNode): AiProviderResult =
         AiProviderResult(
             message = node.path("message").asText("변경안을 정리했습니다.").normalizeAssistantMarkdown(),
-            operations = objectMapper.readValue(node.path("operations").toString()),
+            operations = objectMapper.readTripOperations(node.path("operations")),
             externalThreadId = firstText(node.path("externalThreadId"), node.path("threadId"), node.path("conversationId")),
             providerRunId = firstText(node.path("providerRunId"), node.path("runId"), node.path("id")),
             lastEventJson = node.toString(),
         )
 
-    private fun parseToolOperations(rawToolText: String): List<Map<String, Any?>> {
+    private fun parseToolOperations(rawToolText: String): TripOperations {
         val jsonText = operationsBlockRegex
             .find(rawToolText)
             ?.groupValues
@@ -112,7 +113,7 @@ class AiProviderResponseParser {
         }
         if (!operationsNode.isArray) return emptyList()
         return runCatching {
-            objectMapper.readValue<List<Map<String, Any?>>>(operationsNode.toString())
+            objectMapper.readTripOperations(operationsNode)
         }.getOrDefault(emptyList())
     }
 

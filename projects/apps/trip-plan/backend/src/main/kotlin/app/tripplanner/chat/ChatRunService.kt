@@ -12,7 +12,10 @@ import app.tripplanner.ai.AiStreamEvent
 import app.tripplanner.common.ClockProvider
 import app.tripplanner.trip.ApplyOperationsRequest
 import app.tripplanner.trip.TripService
+import app.tripplanner.trip.TripOperations
 import app.tripplanner.trip.TripStateDto
+import app.tripplanner.trip.chatTitleOperationTitle
+import app.tripplanner.trip.filterTripOperations
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import jakarta.annotation.PreDestroy
 import kotlinx.coroutines.CoroutineScope
@@ -547,7 +550,7 @@ class ChatRunService(
         return runBlocking {
             val deltas = mutableListOf<String>()
             var completedMessage: String? = null
-            var operations = emptyList<Map<String, Any?>>()
+            var operations: TripOperations = emptyList()
             var providerResult: AiProviderResult? = null
             var completedPublished = false
             val startedNanos = System.nanoTime()
@@ -871,20 +874,3 @@ private fun formatAttachmentSize(size: Long): String {
 
 private fun elapsedMillis(startedNanos: Long): Long =
     Duration.ofNanos(System.nanoTime() - startedNanos).toMillis().coerceAtLeast(0L)
-
-private fun List<Map<String, Any?>>.filterTripOperations(): List<Map<String, Any?>> =
-    filterNot { operation -> operation["op"]?.toString() == "set_chat_title" }
-
-private fun List<Map<String, Any?>>.chatTitleOperationTitle(): String? =
-    firstNotNullOfOrNull { operation ->
-        if (operation["op"]?.toString() != "set_chat_title") {
-            null
-        } else {
-            operation["title"]
-                ?.toString()
-                ?.replace(Regex("\\s+"), " ")
-                ?.trim()
-                ?.take(80)
-                ?.takeIf(String::isNotBlank)
-        }
-    }

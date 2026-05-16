@@ -1,9 +1,10 @@
 package app.tripplanner.ai
 
+import app.tripplanner.trip.TripOperations
+import app.tripplanner.trip.readTripOperations
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
-import com.fasterxml.jackson.module.kotlin.readValue
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import org.springframework.stereotype.Component
@@ -207,7 +208,7 @@ private class OpenAiStyleChatClient(
 
         if (node.has("operations")) {
             state.operations = runCatching {
-                objectMapper.readValue<List<Map<String, Any?>>>(node.path("operations").toString())
+                objectMapper.readTripOperations(node.path("operations"))
             }.getOrDefault(state.operations)
         }
 
@@ -284,7 +285,7 @@ private data class OpenAiStyleConfig(
 private class OpenAiStyleStreamState {
     val rawModelText = StringBuilder()
     val messageExtractor = ToolBlockStreamFilter()
-    var operations: List<Map<String, Any?>> = emptyList()
+    var operations: TripOperations = emptyList()
     var completedResult: AiProviderResult? = null
     var externalThreadId: String? = null
     var providerRunId: String? = null

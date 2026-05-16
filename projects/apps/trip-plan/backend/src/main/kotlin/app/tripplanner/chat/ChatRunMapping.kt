@@ -1,7 +1,13 @@
 package app.tripplanner.chat
 
+import app.tripplanner.trip.TripOperations
+import app.tripplanner.trip.hasCoordinateFields
+import app.tripplanner.trip.listSize
+import app.tripplanner.trip.mapOrNull
+import app.tripplanner.trip.operationName
+import app.tripplanner.trip.readTripOperations
+import app.tripplanner.trip.stringOrNull
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
-import com.fasterxml.jackson.module.kotlin.readValue
 
 private val chatRunObjectMapper = jacksonObjectMapper()
 
@@ -79,29 +85,29 @@ internal fun chatEditRun(
 
 private fun operationCount(operationsJson: String): Int =
     runCatching {
-        chatRunObjectMapper.readValue<List<Map<String, Any?>>>(operationsJson).size
+        chatRunObjectMapper.readTripOperations(operationsJson).size
     }.getOrDefault(0)
 
-internal fun operationPreview(operations: List<Map<String, Any?>>): List<String> =
+internal fun operationPreview(operations: TripOperations): List<String> =
     operations.mapNotNull { operation ->
-        val op = operation["op"]?.toString()
+        val op = operation.operationName()
         when (op) {
             "set_chat_title" -> {
-                val title = operation.text("title") ?: "새 대화 제목"
+                val title = operation.stringOrNull("title") ?: "새 대화 제목"
                 "대화 제목을 '${title}'로 변경"
             }
             "upsert_place" -> {
-                val place = operation.mapValue("place") ?: operation
-                val title = place.text("name") ?: "새 조사장소"
-                val coordinateText = if (place.hasCoordinates()) "좌표 포함" else "좌표 없음"
+                val place = operation.mapOrNull("place") ?: operation
+                val title = place.stringOrNull("name") ?: "새 조사장소"
+                val coordinateText = if (place.hasCoordinateFields()) "좌표 포함" else "좌표 없음"
                 "조사장소 '${title}' 추가 · ${coordinateText}"
             }
             "add_item" -> {
                 val day = operation["day"]?.toString()
-                val item = operation.mapValue("item")
-                val place = item?.mapValue("place")
-                val title = item?.text("title") ?: place?.text("name") ?: "새 일정"
-                val coordinateText = if (item.hasCoordinates() || place.hasCoordinates()) "좌표 포함" else "좌표 없음"
+                val item = operation.mapOrNull("item")
+                val place = item?.mapOrNull("place")
+                val title = item?.stringOrNull("title") ?: place?.stringOrNull("name") ?: "새 일정"
+                val coordinateText = if (item.hasCoordinateFields() || place.hasCoordinateFields()) "좌표 포함" else "좌표 없음"
                 "Day ${day ?: "?"}에 '${title}' 추가 · ${coordinateText}"
             }
             "update_item" -> "'${operation["itemId"] ?: "일정"}' 내용 수정"
@@ -109,7 +115,7 @@ internal fun operationPreview(operations: List<Map<String, Any?>>): List<String>
             "delete_item" -> "'${operation["itemId"] ?: "일정"}' 삭제"
             "reorder_day" -> "Day ${operation["day"] ?: "?"} 일정 순서 변경"
             "replace_day_plan" -> {
-                val count = (operation["items"] as? List<*>)?.size ?: 0
+                val count = operation.listSize("items")
                 "Day ${operation["day"] ?: "?"} 일정 ${count}개로 교체"
             }
             else -> null
@@ -118,15 +124,5 @@ internal fun operationPreview(operations: List<Map<String, Any?>>): List<String>
 
 private fun operationPreview(operationsJson: String): List<String> =
     runCatching {
-        operationPreview(chatRunObjectMapper.readValue<List<Map<String, Any?>>>(operationsJson))
+        operationPreview(chatRunObjectMapper.readTripOperations(operationsJson))
     }.getOrDefault(emptyList())
-
-@Suppress("UNCHECKED_CAST")
-private fun Map<String, Any?>.mapValue(key: String): Map<String, Any?>? =
-    this[key] as? Map<String, Any?>
-
-private fun Map<String, Any?>.text(key: String): String? =
-    this[key]?.toString()?.takeIf { it.isNotBlank() }
-
-private fun Map<String, Any?>?.hasCoordinates(): Boolean =
-    this?.get("lat") != null && this["lng"] != null

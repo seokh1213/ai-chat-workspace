@@ -1,6 +1,7 @@
 package app.tripplanner.ai
 
 import app.tripplanner.trip.TripStateDto
+import app.tripplanner.trip.TripOperations
 import kotlinx.coroutines.flow.Flow
 import org.springframework.stereotype.Component
 
@@ -32,7 +33,7 @@ data class AiPriorMessage(
 
 data class AiProviderResult(
     val message: String,
-    val operations: List<Map<String, Any?>>,
+    val operations: TripOperations,
     val externalThreadId: String? = null,
     val providerRunId: String? = null,
     val lastEventJson: String? = null,
@@ -70,7 +71,7 @@ sealed interface AiStreamEvent {
     ) : AiStreamEvent
 
     data class OperationsProposed(
-        val operations: List<Map<String, Any?>>,
+        val operations: TripOperations,
     ) : AiStreamEvent
 
     data class MessageCompleted(

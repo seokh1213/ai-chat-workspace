@@ -52,6 +52,17 @@ export type CreateTripRequest = {
 
 export type UpdateTripRequest = CreateTripRequest;
 
+export type TripFormState = {
+  title: string;
+  destinationName: string;
+  destinationLat: number | null;
+  destinationLng: number | null;
+  startDate: string;
+  endDate: string;
+};
+
+export type TripTextField = "title" | "destinationName" | "startDate" | "endDate";
+
 export type TripDay = {
   id: string;
   tripId: string;

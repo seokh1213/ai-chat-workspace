@@ -377,7 +377,7 @@ class TripService(
         }
     }
 
-    private fun applyOperation(tripId: String, operation: Map<String, Any?>, now: String) {
+    private fun applyOperation(tripId: String, operation: TripOperation, now: String) {
         when (operation.string("op")) {
             "upsert_place" -> applyUpsertPlace(tripId, operation, now)
             "add_item" -> applyAddItem(tripId, operation, now)
@@ -390,12 +390,12 @@ class TripService(
         }
     }
 
-    private fun applyUpsertPlace(tripId: String, operation: Map<String, Any?>, now: String): PlaceDto {
+    private fun applyUpsertPlace(tripId: String, operation: TripOperation, now: String): PlaceDto {
         val payload = operation.mapOrNull("place") ?: operation
         return createPlaceFromPayload(tripId = tripId, payload = payload, now = now)
     }
 
-    private fun applyAddItem(tripId: String, operation: Map<String, Any?>, now: String): ItineraryItemDto {
+    private fun applyAddItem(tripId: String, operation: TripOperation, now: String): ItineraryItemDto {
         val day = repository.findDayByNumber(tripId, operation.int("day"))
             ?: throw NoSuchElementException("Trip day not found.")
         val itemPayload = operation.map("item")
@@ -425,7 +425,7 @@ class TripService(
         return item
     }
 
-    private fun createPlaceFromPayload(tripId: String, payload: Map<String, Any?>, now: String): PlaceDto {
+    private fun createPlaceFromPayload(tripId: String, payload: TripOperation, now: String): PlaceDto {
         val name = payload.string("name").trim()
         require(name.isNotBlank()) { "Place name must not be blank." }
         reusablePlace(tripId = tripId, payload = payload, name = name)?.let { return it }
@@ -453,7 +453,7 @@ class TripService(
         return place
     }
 
-    private fun reusablePlace(tripId: String, payload: Map<String, Any?>, name: String): PlaceDto? {
+    private fun reusablePlace(tripId: String, payload: TripOperation, name: String): PlaceDto? {
         val normalizedName = normalizePlaceName(name)
         val lat = payload.doubleOrNull("lat")
         val lng = payload.doubleOrNull("lng")
@@ -465,7 +465,7 @@ class TripService(
         }
     }
 
-    private fun Map<String, Any?>.toImplicitPlacePayload(): Map<String, Any?>? {
+    private fun TripOperation.toImplicitPlacePayload(): TripOperation? {
         if (stringOrNull("placeId") != null) return null
 
         val title = stringOrNull("title")?.trim().orEmpty()
@@ -490,7 +490,7 @@ class TripService(
         )
     }
 
-    private fun applyUpdateItem(operation: Map<String, Any?>, now: String) {
+    private fun applyUpdateItem(operation: TripOperation, now: String) {
         val itemId = operation.string("itemId")
         val existing = repository.findItem(itemId) ?: throw NoSuchElementException("Itinerary item not found.")
         require(!existing.locked || operation.booleanOrNull("unlock") == true) { "Locked item cannot be updated." }
@@ -512,7 +512,7 @@ class TripService(
         )
     }
 
-    private fun applyMoveItem(tripId: String, operation: Map<String, Any?>, now: String) {
+    private fun applyMoveItem(tripId: String, operation: TripOperation, now: String) {
         val itemId = operation.string("itemId")
         val item = repository.findItem(itemId) ?: throw NoSuchElementException("Itinerary item not found.")
         require(!item.locked || operation.booleanOrNull("unlock") == true) { "Locked item cannot be moved." }
@@ -533,13 +533,13 @@ class TripService(
         }
     }
 
-    private fun applyDeleteItem(operation: Map<String, Any?>) {
+    private fun applyDeleteItem(operation: TripOperation) {
         val item = repository.findItem(operation.string("itemId")) ?: throw NoSuchElementException("Itinerary item not found.")
         require(!item.locked || operation.booleanOrNull("unlock") == true) { "Locked item cannot be deleted." }
         repository.deleteItem(item.id)
     }
 
-    private fun applyReorderDay(tripId: String, operation: Map<String, Any?>, now: String) {
+    private fun applyReorderDay(tripId: String, operation: TripOperation, now: String) {
         val day = repository.findDayByNumber(tripId, operation.int("day"))
             ?: throw NoSuchElementException("Trip day not found.")
         val current = repository.findItemsByDay(day.id)
@@ -551,7 +551,7 @@ class TripService(
         normalizeDayOrder(day.id, orderedIds, now)
     }
 
-    private fun applyReplaceDayPlan(tripId: String, operation: Map<String, Any?>, now: String) {
+    private fun applyReplaceDayPlan(tripId: String, operation: TripOperation, now: String) {
         val day = repository.findDayByNumber(tripId, operation.int("day"))
             ?: throw NoSuchElementException("Trip day not found.")
         val current = repository.findItemsByDay(day.id)
@@ -597,7 +597,7 @@ class TripService(
         source: String,
         beforeState: TripStateDto,
         afterState: TripStateDto,
-        operations: List<Map<String, Any?>>,
+        operations: TripOperations,
     ): CheckpointSummaryDto {
         val checkpoint = CheckpointRecordDto(
             id = "checkpoint_${UUID.randomUUID()}",
@@ -658,47 +658,3 @@ private fun coordinateDistanceMeters(
     val lngMeters = (lngA - lngB) * 111_320.0 * kotlin.math.cos(Math.toRadians((latA + latB) / 2.0))
     return kotlin.math.hypot(latMeters, lngMeters)
 }
-
-private fun Map<String, Any?>.string(key: String): String =
-    stringOrNull(key) ?: throw IllegalArgumentException("Missing required field: $key")
-
-private fun Map<String, Any?>.stringOrNull(key: String): String? =
-    this[key]?.toString()?.takeIf { it.isNotBlank() }
-
-private fun Map<String, Any?>.int(key: String): Int =
-    intOrNull(key) ?: throw IllegalArgumentException("Missing required integer field: $key")
-
-private fun Map<String, Any?>.intOrNull(key: String): Int? =
-    when (val value = this[key]) {
-        is Number -> value.toInt()
-        is String -> value.toIntOrNull()
-        else -> null
-    }
-
-private fun Map<String, Any?>.doubleOrNull(key: String): Double? =
-    when (val value = this[key]) {
-        is Number -> value.toDouble()
-        is String -> value.toDoubleOrNull()
-        else -> null
-    }
-
-private fun Map<String, Any?>.booleanOrNull(key: String): Boolean? =
-    when (val value = this[key]) {
-        is Boolean -> value
-        is String -> value.toBooleanStrictOrNull()
-        else -> null
-    }
-
-private fun Map<String, Any?>.map(key: String): Map<String, Any?> =
-    mapOrNull(key) ?: throw IllegalArgumentException("Missing required object field: $key")
-
-@Suppress("UNCHECKED_CAST")
-private fun Map<String, Any?>.mapOrNull(key: String): Map<String, Any?>? =
-    this[key] as? Map<String, Any?>
-
-@Suppress("UNCHECKED_CAST")
-private fun Map<String, Any?>.mapList(key: String): List<Map<String, Any?>> =
-    (this[key] as? List<*>)?.mapNotNull { it as? Map<String, Any?> }.orEmpty()
-
-private fun Map<String, Any?>.stringList(key: String): List<String> =
-    (this[key] as? List<*>)?.mapNotNull { it?.toString() }.orEmpty()
