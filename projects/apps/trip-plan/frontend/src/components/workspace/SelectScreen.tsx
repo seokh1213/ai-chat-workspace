@@ -5,6 +5,7 @@ import { formatDateRange } from "../../lib/tripDisplay";
 import type { WorkspaceSettingsForm } from "../../lib/workspaceSettings";
 import type { AiProviderStatus, Trip, Workspace } from "../../types";
 import { LoadingState } from "../common/LoadingState";
+import { ThemeToggle } from "../common/ThemeToggle";
 import { WorkspaceSettingsDialog } from "./WorkspaceSettingsDialog";
 
 export function SelectScreen(props: {
@@ -40,10 +41,13 @@ export function SelectScreen(props: {
               <p className="eyebrow">Trip workspace</p>
               <h1>여행 작업실</h1>
             </div>
-            <button className="primary-button" type="button" disabled={!props.workspaceId} onClick={props.onCreateTrip}>
-              <Plus size={16} />
-              여행 생성
-            </button>
+            <div className="screen-header-actions">
+              <ThemeToggle />
+              <button className="primary-button" type="button" disabled={!props.workspaceId} onClick={props.onCreateTrip}>
+                <Plus size={16} />
+                여행 생성
+              </button>
+            </div>
           </div>
 
           <div className="workspace-strip">

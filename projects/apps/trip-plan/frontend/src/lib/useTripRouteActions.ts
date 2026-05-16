@@ -44,13 +44,20 @@ export function useTripRouteActions({
   setTrips
 }: UseTripRouteActionsProps) {
   const tripOpenRequestRef = useRef(0);
+  const currentPathnameRef = useRef(window.location.pathname);
 
   useEffect(() => {
     void bootstrap();
   }, []);
 
   useEffect(() => {
+    currentPathnameRef.current = window.location.pathname;
+  });
+
+  useEffect(() => {
     const handlePopState = () => {
+      if (window.location.pathname === currentPathnameRef.current) return;
+      currentPathnameRef.current = window.location.pathname;
       const route = parseRoute();
       if (route.screen === "create") {
         ++tripOpenRequestRef.current;

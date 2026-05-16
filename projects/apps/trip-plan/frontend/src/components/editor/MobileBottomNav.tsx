@@ -1,4 +1,5 @@
 import { Bot, CalendarDays, MapPinned } from "lucide-react";
+import type { ReactNode } from "react";
 
 import type { MobileEditorView } from "../../lib/mobileView";
 
@@ -10,20 +11,32 @@ interface MobileBottomNavProps {
 }
 
 export function MobileBottomNav(props: MobileBottomNavProps) {
+  const tabs = [
+    { view: "details", label: "상세", icon: <CalendarDays size={17} />, onClick: props.onOpenDetails },
+    { view: "map", label: "지도", icon: <MapPinned size={17} />, onClick: props.onOpenMap },
+    { view: "chat", label: "대화", icon: <Bot size={17} />, onClick: props.onOpenChatList }
+  ] satisfies Array<{ view: MobileEditorView; label: string; icon: ReactNode; onClick: () => void }>;
+
   return (
     <nav className="mobile-bottom-nav" aria-label="모바일 화면 전환">
-      <button className={props.mobileView === "details" ? "active" : ""} type="button" onClick={props.onOpenDetails}>
-        <CalendarDays size={17} />
-        <span>상세</span>
-      </button>
-      <button className={props.mobileView === "map" ? "active" : ""} type="button" onClick={props.onOpenMap}>
-        <MapPinned size={17} />
-        <span>지도</span>
-      </button>
-      <button className={props.mobileView === "chat" ? "active" : ""} type="button" onClick={props.onOpenChatList}>
-        <Bot size={17} />
-        <span>대화</span>
-      </button>
+      {tabs.map((tab) => (
+        <MobileBottomTab
+          active={props.mobileView === tab.view}
+          icon={tab.icon}
+          key={tab.view}
+          label={tab.label}
+          onClick={tab.onClick}
+        />
+      ))}
     </nav>
+  );
+}
+
+function MobileBottomTab(props: { active: boolean; icon: ReactNode; label: string; onClick: () => void }) {
+  return (
+    <button className={props.active ? "active" : ""} type="button" aria-current={props.active ? "page" : undefined} onClick={props.onClick}>
+      {props.icon}
+      <span>{props.label}</span>
+    </button>
   );
 }

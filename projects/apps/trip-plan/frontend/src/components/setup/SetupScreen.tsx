@@ -5,6 +5,7 @@ import { submitOnCommandEnter } from "../../lib/device";
 import { formatDuration } from "../../lib/format";
 import type { SetupAssistantMessage, TripFormState, TripTextField } from "../../types";
 import { MarkdownContent } from "../common/MarkdownContent";
+import { ThemeToggle } from "../common/ThemeToggle";
 import { DateRangeCalendar } from "./DateRangeCalendar";
 
 export function SetupScreen(props: {
@@ -37,10 +38,13 @@ export function SetupScreen(props: {
               <p className="eyebrow">{props.workspaceName || "Workspace"}</p>
               <h1>새 여행 만들기</h1>
             </div>
-            <button className="text-back-button" type="button" onClick={props.onCancel}>
-              <ChevronLeft size={16} />
-              목록
-            </button>
+            <div className="screen-header-actions">
+              <ThemeToggle />
+              <button className="text-back-button" type="button" onClick={props.onCancel}>
+                <ChevronLeft size={16} />
+                목록
+              </button>
+            </div>
           </div>
 
           <form className="setup-form" onSubmit={props.onSubmit}>

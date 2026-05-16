@@ -10,6 +10,7 @@ import type {
   UpsertItineraryItemRequest,
   UpsertPlaceRequest
 } from "../../types";
+import { ThemeToggle } from "../common/ThemeToggle";
 import { TripMetaForm } from "./TripMetaForm";
 import { PlacesSection } from "./PlacesSection";
 import { ScheduleSection } from "./ScheduleSection";
@@ -75,6 +76,7 @@ export function PlannerSidebar(props: PlannerSidebarProps) {
           여행 목록
         </button>
         <div className="panel-header-actions">
+          <ThemeToggle />
           <button className="secondary-button mobile-chat-entry" type="button" onClick={props.onOpenMobileChatList}>
             <Bot size={15} />
             대화

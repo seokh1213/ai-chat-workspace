@@ -1,9 +1,14 @@
 @import "tailwindcss";
 
 :root {
+  color-scheme: light;
   --bg: #f5f6f8;
   --surface: #ffffff;
   --surface-soft: #fbfcfc;
+  --surface-glass: rgba(255, 255, 255, 0.94);
+  --overlay: rgba(17, 24, 39, 0.22);
+  --map-bg: #e7ecea;
+  --ink: #24262d;
   --text: #24262d;
   --secondary: #5f6673;
   --muted: #9aa0a6;
@@ -15,7 +20,43 @@
   --place: #6b7280;
   --danger: #ff6168;
   --shadow: 0 12px 28px rgba(36, 38, 45, 0.08);
+  --shadow-strong: 0 24px 70px rgba(15, 23, 42, 0.18);
+  --primary-hover: #18aea4;
+  --disabled-button: #d7dde2;
+  --link: #0f766e;
+  --ok-text: #12877f;
+  --warning-text: #9a6407;
+  --danger-text: #c2414a;
   --control-size: 36px;
+}
+
+html[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #111318;
+  --surface: #181b22;
+  --surface-soft: #20242d;
+  --surface-glass: rgba(24, 27, 34, 0.92);
+  --overlay: rgba(0, 0, 0, 0.58);
+  --map-bg: #151a18;
+  --ink: #eef2f7;
+  --text: #eef2f7;
+  --secondary: #b8c0cc;
+  --muted: #8992a0;
+  --line: #2b313b;
+  --strong-line: #3a4250;
+  --teal: #2dd4bf;
+  --teal-soft: rgba(45, 212, 191, 0.15);
+  --violet: #a78bfa;
+  --place: #9ca3af;
+  --danger: #fb7185;
+  --shadow: 0 16px 36px rgba(0, 0, 0, 0.38);
+  --shadow-strong: 0 24px 70px rgba(0, 0, 0, 0.46);
+  --primary-hover: #22b8a8;
+  --disabled-button: #3a4250;
+  --link: #5eead4;
+  --ok-text: #5eead4;
+  --warning-text: #fbbf24;
+  --danger-text: #fda4af;
 }
 
 * {
@@ -126,6 +167,13 @@ button:disabled {
   gap: 16px;
 }
 
+.screen-header-actions {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+}
+
 .select-header h1,
 .form-heading h1 {
   margin: 4px 0 0;
@@ -158,7 +206,7 @@ button:disabled {
 .calendar-card {
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #fff;
+  background: var(--surface);
 }
 
 .workspace-pill {
@@ -182,7 +230,7 @@ button:disabled {
   place-items: center;
   border: 0;
   border-right: 1px solid var(--line);
-  background: #fff;
+  background: var(--surface);
   color: var(--secondary);
 }
 
@@ -215,7 +263,7 @@ button:disabled {
   place-items: center;
   border: 0;
   border-left: 1px solid var(--line);
-  background: #fff;
+  background: var(--surface);
   color: var(--teal);
 }
 
@@ -225,7 +273,7 @@ button:disabled {
   inset: 0;
   display: grid;
   place-items: center;
-  background: rgba(17, 24, 39, 0.22);
+  background: var(--overlay);
   padding: 20px;
 }
 
@@ -233,8 +281,8 @@ button:disabled {
   width: min(520px, 100%);
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #fff;
-  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.18);
+  background: var(--surface);
+  box-shadow: var(--shadow-strong);
 }
 
 .settings-header {
@@ -281,7 +329,7 @@ button:disabled {
   min-height: var(--control-size);
   border: 1px solid var(--line);
   border-radius: 4px;
-  background: #fff;
+  background: var(--surface);
   color: var(--text);
   padding: 0 10px;
   outline: none;
@@ -339,7 +387,7 @@ button:disabled {
   align-items: center;
   border: 1px solid var(--line);
   border-radius: 999px;
-  background: #fff;
+  background: var(--surface);
   color: var(--secondary);
   padding: 0 8px;
   font-size: 11px;
@@ -366,7 +414,7 @@ button:disabled {
   gap: 7px;
   border: 1px solid var(--line);
   border-radius: 6px;
-  background: #fff;
+  background: var(--surface);
   padding: 7px 8px;
 }
 
@@ -388,12 +436,12 @@ button:disabled {
 
 .provider-check.ok em {
   background: var(--teal-soft);
-  color: #12877f;
+  color: var(--ok-text);
 }
 
 .provider-check.warning em {
   background: rgba(245, 158, 11, 0.12);
-  color: #9a6407;
+  color: var(--warning-text);
 }
 
 .provider-check.error em {
@@ -504,7 +552,7 @@ button:disabled {
 .secondary-button {
   min-height: var(--control-size);
   border: 1px solid var(--line);
-  background: #fff;
+  background: var(--surface);
   color: var(--secondary);
   padding: 0 14px;
 }
@@ -513,13 +561,19 @@ button:disabled {
   width: var(--control-size);
   height: var(--control-size);
   border: 1px solid var(--line);
-  background: #fff;
+  background: var(--surface);
   color: var(--secondary);
 }
 
 .icon-button.small {
   width: 32px;
   height: 32px;
+}
+
+.theme-toggle[aria-pressed="true"] {
+  border-color: rgba(45, 212, 191, 0.45);
+  background: var(--teal-soft);
+  color: var(--teal);
 }
 
 .text-back-button {
@@ -537,7 +591,7 @@ button:disabled {
 
 .primary-button:hover,
 .send-button:hover {
-  background: #18aea4;
+  background: var(--primary-hover);
 }
 
 .secondary-button:hover,
@@ -628,7 +682,7 @@ button:disabled {
 .setup-column,
 .setup-chat-panel {
   min-width: 0;
-  background: #fff;
+  background: var(--surface);
 }
 
 .setup-column {
@@ -660,7 +714,7 @@ button:disabled {
   width: 100%;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #fff;
+  background: var(--surface);
   color: var(--text);
   outline: none;
 }
@@ -697,7 +751,7 @@ button:disabled {
   min-height: var(--control-size);
   border: 1px solid var(--line);
   border-radius: 4px;
-  background: #fff;
+  background: var(--surface);
   color: var(--secondary);
   padding: 0 12px;
   font-size: 13px;
@@ -737,14 +791,14 @@ button:disabled {
   min-width: 0;
   border: 1px solid transparent;
   border-radius: 8px;
-  background: #fff;
+  background: var(--surface);
   color: var(--text);
   font-size: 12px;
   font-weight: 700;
 }
 
 .calendar-day.outside {
-  color: #c1c6cc;
+  color: var(--muted);
 }
 
 .calendar-day.in-range {
@@ -811,7 +865,7 @@ button:disabled {
 .quick-prompts button {
   border: 1px solid var(--line);
   border-radius: 999px;
-  background: #fff;
+  background: var(--surface);
   color: var(--secondary);
   padding: 6px 10px;
   font-size: 12px;
@@ -845,7 +899,7 @@ button:disabled {
   flex-direction: column;
   overflow: hidden;
   border-right: 1px solid var(--line);
-  background: #fff;
+  background: var(--surface);
 }
 
 .chat-panel {
@@ -853,7 +907,7 @@ button:disabled {
   min-width: 0;
   flex-direction: column;
   border-left: 1px solid var(--line);
-  background: #fff;
+  background: var(--surface);
 }
 
 .panel-resizer {
@@ -1017,7 +1071,7 @@ button:disabled {
   height: 34px;
   border: 1px solid var(--line);
   border-radius: 4px;
-  background: #fff;
+  background: var(--surface);
   color: var(--text);
   font-size: 13px;
   font-weight: 750;
@@ -1090,7 +1144,7 @@ button:disabled {
   align-items: center;
   justify-content: space-between;
   border: 0;
-  background: #fff;
+  background: var(--surface);
   padding: 0 14px;
   font-size: 14px;
   font-weight: 800;
@@ -1162,7 +1216,7 @@ button:disabled {
   overflow-y: hidden;
   overscroll-behavior-x: contain;
   margin: 0;
-  background: #fff;
+  background: var(--surface);
   padding: 10px 12px 12px;
   scrollbar-color: rgba(95, 102, 115, 0.38) transparent;
   scrollbar-gutter: stable;
@@ -1192,7 +1246,7 @@ button:disabled {
   gap: 4px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #fff;
+  background: var(--surface);
   padding: 9px;
   text-align: left;
 }
@@ -1262,7 +1316,7 @@ button:disabled {
   gap: 7px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #fff;
+  background: var(--surface);
   color: var(--secondary);
   font-size: 13px;
   font-weight: 700;
@@ -1288,7 +1342,7 @@ button:disabled {
 .places-section.collapsed {
   flex: 0 0 auto;
   padding-bottom: 10px;
-  background: #fff;
+  background: var(--surface);
 }
 
 .places-section.collapsed .section-toggle {
@@ -1310,7 +1364,7 @@ button:disabled {
 }
 
 .plan-node.memo-node {
-  background: #fff;
+  background: var(--surface);
 }
 
 .node-sequence {
@@ -1401,7 +1455,7 @@ button:disabled {
   margin-top: 7px;
   border: 1px solid var(--line);
   border-radius: 999px;
-  background: #fff;
+  background: var(--surface);
   color: var(--secondary);
   padding: 0 8px 0 9px;
   font-size: 11px;
@@ -1542,7 +1596,7 @@ button:disabled {
 
 .map-canvas {
   overflow: hidden;
-  background: #e7ecea;
+  background: var(--map-bg);
 }
 
 .leaflet-map {
@@ -1558,6 +1612,19 @@ button:disabled {
   font-size: 10px;
 }
 
+html[data-theme="dark"] .leaflet-control-zoom a,
+html[data-theme="dark"] .leaflet-control-attribution,
+html[data-theme="dark"] .leaflet-popup-content-wrapper,
+html[data-theme="dark"] .leaflet-popup-tip {
+  border-color: var(--line);
+  background: var(--surface);
+  color: var(--text);
+}
+
+html[data-theme="dark"] .leaflet-container a {
+  color: var(--link);
+}
+
 .map-top-card,
 .map-legend,
 .map-empty-note {
@@ -1565,7 +1632,7 @@ button:disabled {
   z-index: 500;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.94);
+  background: var(--surface-glass);
   box-shadow: var(--shadow);
 }
 
@@ -1629,7 +1696,7 @@ button:disabled {
   place-items: center;
   border: 1px solid var(--line);
   border-radius: 4px;
-  background: #fff;
+  background: var(--surface);
   color: var(--secondary);
 }
 
@@ -1825,7 +1892,7 @@ button:disabled {
   place-items: center;
   border: 1px solid var(--line);
   border-radius: 4px;
-  background: #fff;
+  background: var(--surface);
   color: var(--secondary);
   box-shadow: var(--shadow);
 }
@@ -1866,7 +1933,7 @@ button:disabled {
   gap: 5px;
   border: 1px solid rgba(31, 193, 182, 0.28);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.96);
+  background: var(--surface-glass);
   color: var(--teal);
   box-shadow: var(--shadow);
   font-size: 12px;
@@ -1927,7 +1994,7 @@ button:disabled {
 .checkpoint-row {
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #fff;
+  background: var(--surface);
 }
 
 .chat-session-row,
@@ -1999,7 +2066,7 @@ button:disabled {
   place-items: center;
   border: 0;
   border-right: 1px solid var(--line);
-  background: #fff;
+  background: var(--surface);
   color: var(--secondary);
 }
 
@@ -2127,7 +2194,7 @@ button:disabled {
 }
 
 .message-content a {
-  color: #0f766e;
+  color: var(--link);
   font-weight: 700;
   overflow-wrap: anywhere;
   text-decoration: underline;
@@ -2252,7 +2319,7 @@ button:disabled {
   gap: 4px;
   border: 1px solid var(--line);
   border-radius: 999px;
-  background: #fff;
+  background: var(--surface);
   color: var(--secondary);
   font-size: 11px;
   font-weight: 800;
@@ -2279,7 +2346,7 @@ button:disabled {
   border: 1px solid rgba(31, 193, 182, 0.18);
   border-radius: 6px;
   background: var(--teal-soft);
-  color: #188d85;
+  color: var(--ok-text);
   padding: 5px 7px;
   font-size: 11px;
   font-weight: 800;
@@ -2334,7 +2401,7 @@ button:disabled {
   gap: 8px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #fff;
+  background: var(--surface);
   color: var(--text);
   padding: 4px 8px 4px 4px;
   text-decoration: none;
@@ -2414,7 +2481,7 @@ button:disabled {
   display: grid;
   gap: 8px;
   border-top: 1px solid var(--line);
-  background: #fff;
+  background: var(--surface);
   padding: 10px 12px 12px;
 }
 
@@ -2485,19 +2552,19 @@ button:disabled {
   width: 44px;
   height: 44px;
   border-radius: 6px;
-  background: #fff;
+  background: var(--surface);
   object-fit: cover;
 }
 
 .pending-attachment .attachment-file-icon {
   width: 44px;
   height: 44px;
-  background: #fff;
+  background: var(--surface);
 }
 
 .pending-attachment.queued {
   border-color: rgba(154, 160, 166, 0.28);
-  background: #f7f9f9;
+  background: var(--surface-soft);
 }
 
 .pending-attachment.uploading {
@@ -2533,7 +2600,7 @@ button:disabled {
 }
 
 .pending-attachment.failed em {
-  color: #c2414a;
+  color: var(--danger-text);
 }
 
 .pending-attachment button {
@@ -2565,20 +2632,20 @@ button:disabled {
 }
 
 .send-button:disabled {
-  background: #d7dde2;
+  background: var(--disabled-button);
   color: #fff;
   opacity: 1;
 }
 
 .send-button.stop {
   border: 1px solid var(--line);
-  background: #fff;
+  background: var(--surface);
   color: var(--secondary);
 }
 
 .send-button.stop:hover {
   border-color: rgba(17, 24, 39, 0.24);
-  background: #f7f9f8;
+  background: var(--surface-soft);
   color: var(--ink);
 }
 
@@ -2613,8 +2680,24 @@ button:disabled {
 }
 
 @media (max-width: 1180px) {
+  .app-page {
+    padding: 12px;
+  }
+
+  .select-main {
+    width: min(820px, calc(100vw - 48px));
+  }
+
+  .setup-shell {
+    grid-template-columns: minmax(340px, 0.95fr) minmax(340px, 1.05fr);
+  }
+
   .editor-shell {
     grid-template-columns: minmax(330px, var(--planner-width, 380px)) 8px minmax(360px, 1fr);
+  }
+
+  .planner-sidebar {
+    min-width: 330px;
   }
 
   .chat-resizer {
@@ -2640,7 +2723,7 @@ button:disabled {
   }
 }
 
-@media (max-width: 820px) {
+@media (max-width: 820px), (max-width: 960px) and (max-height: 560px) and (orientation: landscape) {
   .app-page {
     min-height: 100dvh;
     padding: 0;
@@ -2692,7 +2775,7 @@ button:disabled {
     overflow: hidden;
     border: 0;
     border-radius: 0;
-    background: #fff;
+    background: var(--surface);
     box-shadow: none;
     padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 68px);
   }
@@ -2757,7 +2840,7 @@ button:disabled {
     gap: 6px;
     border: 1px solid rgba(221, 226, 231, 0.92);
     border-radius: 999px;
-    background: rgba(255, 255, 255, 0.94);
+    background: var(--surface-glass);
     color: var(--text);
     box-shadow: none;
     padding: 0 12px;
@@ -2828,7 +2911,7 @@ button:disabled {
     overflow-x: auto;
     overscroll-behavior-x: contain;
     border-bottom: 1px solid var(--line);
-    background: #fff;
+    background: var(--surface);
     padding: 8px 12px 10px;
     scrollbar-width: none;
   }
@@ -2845,7 +2928,7 @@ button:disabled {
     gap: 3px;
     border: 1px solid var(--line);
     border-radius: 8px;
-    background: #fff;
+    background: var(--surface);
     color: var(--text);
     padding: 8px 10px;
     text-align: left;
@@ -2921,7 +3004,7 @@ button:disabled {
     margin: 0;
     border: 1px solid rgba(31, 193, 182, 0.32);
     border-radius: 0;
-    background: #fff;
+    background: var(--surface);
     padding: calc(env(safe-area-inset-top, 0px) + 14px) 16px calc(env(safe-area-inset-bottom, 0px) + 18px);
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
@@ -2957,7 +3040,7 @@ button:disabled {
     justify-content: space-between;
     gap: 12px;
     margin: -2px 0 4px;
-    background: #fff;
+    background: var(--surface);
     padding-bottom: 8px;
   }
 
@@ -2996,7 +3079,7 @@ button:disabled {
     bottom: 0;
     grid-template-columns: minmax(0, 1fr) auto;
     margin-top: 6px;
-    background: #fff;
+    background: var(--surface);
     padding-top: 8px;
   }
 
@@ -3063,8 +3146,8 @@ button:disabled {
     gap: 6px;
     border: 1px solid rgba(221, 226, 231, 0.9);
     border-radius: 14px;
-    background: rgba(255, 255, 255, 0.96);
-    box-shadow: 0 16px 40px rgba(15, 23, 42, 0.18);
+    background: var(--surface-glass);
+    box-shadow: var(--shadow);
     padding: 6px;
   }
 

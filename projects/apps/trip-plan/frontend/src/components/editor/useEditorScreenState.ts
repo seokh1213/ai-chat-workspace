@@ -13,7 +13,8 @@ import {
 import { clearDocumentResizeState, cssEscapeValue, scrollDetailNodeIntoView, setDocumentResizeState } from "../../lib/dom";
 import { clampNumber } from "../../lib/format";
 import { emptyItemForm, emptyPlaceForm } from "../../lib/formDefaults";
-import { type MobileEditorView, readMobileViewFromUrl, writeMobileViewToUrl } from "../../lib/mobileView";
+import type { MobileEditorView } from "../../lib/mobileView";
+import { useMobileEditorView } from "../../lib/useMobileEditorView";
 import { dedupePlaces, hasCoordinates } from "../../lib/tripDisplay";
 import type {
   ItineraryItem,
@@ -113,7 +114,7 @@ export function useEditorScreenState(props: UseEditorScreenStateProps): EditorSc
   const [focusedMapPlaceId, setFocusedMapPlaceId] = useState<string | null>(null);
   const [shouldCenterFocusedPlace, setShouldCenterFocusedPlace] = useState(false);
   const [detailHighlight, setDetailHighlight] = useState<{ type: "item" | "place"; id: string } | null>(null);
-  const [mobileView, setMobileViewState] = useState<MobileEditorView>(() => readMobileViewFromUrl() ?? (props.activeChatId ? "chat" : "map"));
+  const { mobileView, setMobileView } = useMobileEditorView(props.activeChatId);
   const focusClearTimerRef = useRef<number | null>(null);
   const detailFocusClearTimerRef = useRef<number | null>(null);
   const suppressDetailHighlightClearRef = useRef(false);
@@ -131,25 +132,10 @@ export function useEditorScreenState(props: UseEditorScreenStateProps): EditorSc
   } as CSSProperties;
 
   useEffect(() => {
-    if (props.activeChatId && !readMobileViewFromUrl()) {
-      setMobileView("chat");
-    }
-  }, [props.activeChatId]);
-
-  useEffect(() => {
     return () => {
       if (focusClearTimerRef.current != null) window.clearTimeout(focusClearTimerRef.current);
       if (detailFocusClearTimerRef.current != null) window.clearTimeout(detailFocusClearTimerRef.current);
     };
-  }, []);
-
-  useEffect(() => {
-    const handlePopState = () => {
-      const nextView = readMobileViewFromUrl();
-      if (nextView) setMobileViewState(nextView);
-    };
-    window.addEventListener("popstate", handlePopState);
-    return () => window.removeEventListener("popstate", handlePopState);
   }, []);
 
   useEffect(() => {
@@ -160,17 +146,12 @@ export function useEditorScreenState(props: UseEditorScreenStateProps): EditorSc
     if (props.editingPlaceId) setIsAddingPlace(false);
   }, [props.editingPlaceId]);
 
-  function setMobileView(nextView: MobileEditorView) {
-    setMobileViewState(nextView);
-    writeMobileViewToUrl(nextView);
-  }
-
   function openMobileChatList() {
     if (props.chatCollapsed) {
       props.onToggleChat();
     }
     props.onOpenChatList();
-    setMobileView("chat");
+    setMobileView("chat", "push");
   }
 
   function closeMobileChat() {
@@ -181,7 +162,7 @@ export function useEditorScreenState(props: UseEditorScreenStateProps): EditorSc
     if (props.plannerCollapsed) {
       props.onTogglePlanner();
     }
-    setMobileView("details");
+    setMobileView("details", "push");
   }
 
   function startAddItem() {
@@ -337,7 +318,7 @@ export function useEditorScreenState(props: UseEditorScreenStateProps): EditorSc
     openMobileChatList,
     closeMobileChat,
     openMobileDetails,
-    openMobileMap: () => setMobileView("map"),
+    openMobileMap: () => setMobileView("map", "push"),
     startAddItem,
     startAddPlace,
     cancelItemForm: () => {
