@@ -157,7 +157,7 @@ export function WorkspaceSettingsDialog(props: {
                 <input
                   value={props.form.openAiApiKey}
                   onChange={(event) => setField("openAiApiKey", event.target.value)}
-                  placeholder="sk-..."
+                  placeholder="비워두면 기존 key 유지"
                   type="password"
                 />
               </label>
@@ -184,7 +184,7 @@ export function WorkspaceSettingsDialog(props: {
                 <input
                   value={props.form.openRouterApiKey}
                   onChange={(event) => setField("openRouterApiKey", event.target.value)}
-                  placeholder="sk-or-..."
+                  placeholder="비워두면 기존 key 유지"
                   type="password"
                 />
               </label>

@@ -2,6 +2,7 @@ package app.tripplanner.chat
 
 import app.tripplanner.trip.CheckpointSummaryDto
 import app.tripplanner.trip.TripStateDto
+import com.fasterxml.jackson.annotation.JsonIgnore
 
 data class ChatSessionDto(
     val id: String,
@@ -10,6 +11,7 @@ data class ChatSessionDto(
     val provider: String,
     val model: String?,
     val status: String,
+    @get:JsonIgnore
     val settingsJson: String,
     val createdAt: String,
     val updatedAt: String,

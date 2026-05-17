@@ -5,11 +5,8 @@ export type Workspace = {
   aiModel: string;
   aiEffort: string;
   openAiBaseUrl: string | null;
-  openAiApiKey: string | null;
-  openRouterApiKey: string | null;
   openRouterReferer: string | null;
   openRouterTitle: string | null;
-  settingsJson: string;
   createdAt: string;
   updatedAt: string;
 };
@@ -161,7 +158,6 @@ export type ChatSession = {
   provider: string;
   model: string | null;
   status: string;
-  settingsJson: string;
   createdAt: string;
   updatedAt: string;
 };

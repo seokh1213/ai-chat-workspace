@@ -51,17 +51,17 @@ export function PlacesSection(props: PlacesSectionProps) {
       </button>
       {!props.collapsed ? (
         <div className="section-body">
-          {props.visiblePlaces.length === 0 ? (
-            <div className="empty-state compact">
-              <strong>후보 장소가 없습니다</strong>
-              <span>장소를 추가하면 일정 노드로 바로 가져올 수 있습니다.</span>
-            </div>
-          ) : null}
           {!props.editingPlaceId && !props.isAddingPlace ? (
             <button className="section-add-button" type="button" onClick={props.onStartAddPlace}>
               <Plus size={15} />
               장소 추가
             </button>
+          ) : null}
+          {props.visiblePlaces.length === 0 ? (
+            <div className="empty-state compact">
+              <strong>후보 장소가 없습니다</strong>
+              <span>장소를 추가하면 일정 노드로 바로 가져올 수 있습니다.</span>
+            </div>
           ) : null}
           {props.isAddingPlace ? (
             <PlaceForm

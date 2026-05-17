@@ -34,12 +34,6 @@ export function MobilePlacesSection(props: PlacesSectionProps) {
       </button>
       {props.collapsed ? null : (
         <div className="grid gap-3 px-3 pb-4">
-          {props.visiblePlaces.length === 0 ? (
-            <div className="grid place-items-start gap-2 rounded-md border border-dashed border-[var(--strong-line)] bg-[var(--surface-soft)] p-4 text-left">
-              <strong className="text-sm">후보 장소가 없습니다</strong>
-              <span className="text-xs leading-relaxed text-[var(--secondary)]">장소를 추가하면 일정 노드로 바로 가져올 수 있습니다.</span>
-            </div>
-          ) : null}
           {!props.editingPlaceId && !props.isAddingPlace ? (
             <button
               className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-[var(--line)] bg-[var(--surface)] text-sm font-bold text-[var(--secondary)]"
@@ -49,6 +43,12 @@ export function MobilePlacesSection(props: PlacesSectionProps) {
               <Plus className="h-4 w-4" aria-hidden="true" />
               장소 추가
             </button>
+          ) : null}
+          {props.visiblePlaces.length === 0 ? (
+            <div className="grid place-items-start gap-2 rounded-md border border-dashed border-[var(--strong-line)] bg-[var(--surface-soft)] p-4 text-left">
+              <strong className="text-sm">후보 장소가 없습니다</strong>
+              <span className="text-xs leading-relaxed text-[var(--secondary)]">장소를 추가하면 일정 노드로 바로 가져올 수 있습니다.</span>
+            </div>
           ) : null}
           {props.isAddingPlace ? (
             <MobilePlaceForm

@@ -113,8 +113,8 @@ export function useWorkspaceManager({ onActiveWorkspaceDeleted }: UseWorkspaceMa
         aiModel: workspaceSettingsForm.aiModel.trim(),
         aiEffort: workspaceSettingsForm.aiEffort,
         openAiBaseUrl: workspaceSettingsForm.openAiBaseUrl.trim(),
-        openAiApiKey: workspaceSettingsForm.openAiApiKey.trim(),
-        openRouterApiKey: workspaceSettingsForm.openRouterApiKey.trim(),
+        openAiApiKey: optionalSecret(workspaceSettingsForm.openAiApiKey),
+        openRouterApiKey: optionalSecret(workspaceSettingsForm.openRouterApiKey),
         openRouterReferer: workspaceSettingsForm.openRouterReferer.trim(),
         openRouterTitle: workspaceSettingsForm.openRouterTitle.trim()
       });
@@ -168,4 +168,9 @@ export function useWorkspaceManager({ onActiveWorkspaceDeleted }: UseWorkspaceMa
     submitWorkspaceSettings,
     removeWorkspace
   };
+}
+
+function optionalSecret(value: string): string | undefined {
+  const trimmed = value.trim();
+  return trimmed ? trimmed : undefined;
 }

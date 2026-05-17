@@ -74,19 +74,18 @@ export const aiEffortOptions: AiEffortOption[] = [
 ];
 
 export function workspaceToSettingsForm(workspace: Workspace | null): WorkspaceSettingsForm {
-  const settings = parseWorkspaceSettings(workspace);
-  const provider = normalizeAiProvider(workspace?.aiProvider ?? settings.aiProvider);
+  const provider = normalizeAiProvider(workspace?.aiProvider);
   const providerOption = aiProviderOptions.find((option) => option.value === provider) ?? aiProviderOptions[0];
   return {
     name: workspace?.name ?? "",
     aiProvider: providerOption.value,
-    aiModel: workspace?.aiModel ?? settings.aiModel ?? providerOption.defaultModel,
-    aiEffort: workspace?.aiEffort ?? settings.aiEffort ?? "medium",
-    openAiBaseUrl: workspace?.openAiBaseUrl ?? settings.openAiBaseUrl ?? "https://api.openai.com/v1/chat/completions",
-    openAiApiKey: workspace?.openAiApiKey ?? settings.openAiApiKey ?? "",
-    openRouterApiKey: workspace?.openRouterApiKey ?? settings.openRouterApiKey ?? "",
-    openRouterReferer: workspace?.openRouterReferer ?? settings.openRouterReferer ?? "",
-    openRouterTitle: workspace?.openRouterTitle ?? settings.openRouterTitle ?? "Trip Planner"
+    aiModel: workspace?.aiModel ?? providerOption.defaultModel,
+    aiEffort: workspace?.aiEffort ?? "medium",
+    openAiBaseUrl: workspace?.openAiBaseUrl ?? "https://api.openai.com/v1/chat/completions",
+    openAiApiKey: "",
+    openRouterApiKey: "",
+    openRouterReferer: workspace?.openRouterReferer ?? "",
+    openRouterTitle: workspace?.openRouterTitle ?? "Trip Planner"
   };
 }
 
@@ -95,14 +94,4 @@ export function normalizeAiProvider(value: string | undefined): AiProviderId {
     return value;
   }
   return "codex-app-server";
-}
-
-function parseWorkspaceSettings(workspace: Workspace | null): Partial<WorkspaceSettingsForm> {
-  if (!workspace?.settingsJson) return {};
-  try {
-    return JSON.parse(workspace.settingsJson) as Partial<WorkspaceSettingsForm>;
-  } catch (error) {
-    console.debug("workspace settings parse failed", error);
-    return {};
-  }
 }

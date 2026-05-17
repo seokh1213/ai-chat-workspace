@@ -1,5 +1,7 @@
 package app.tripplanner.workspace
 
+import com.fasterxml.jackson.annotation.JsonIgnore
+
 data class WorkspaceDto(
     val id: String,
     val name: String,
@@ -7,10 +9,13 @@ data class WorkspaceDto(
     val aiModel: String,
     val aiEffort: String,
     val openAiBaseUrl: String?,
+    @get:JsonIgnore
     val openAiApiKey: String?,
+    @get:JsonIgnore
     val openRouterApiKey: String?,
     val openRouterReferer: String?,
     val openRouterTitle: String?,
+    @get:JsonIgnore
     val settingsJson: String,
     val createdAt: String,
     val updatedAt: String,
