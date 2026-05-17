@@ -73,7 +73,6 @@ export interface EditorScreenState {
   detailHighlight: { type: "item" | "place"; id: string } | null;
   mobileView: MobileEditorView;
   openMobileChatList: () => void;
-  closeMobileChat: () => void;
   openMobileDetails: () => void;
   openMobileMap: () => void;
   startAddItem: () => void;
@@ -118,13 +117,7 @@ export function useEditorScreenState(props: UseEditorScreenStateProps): EditorSc
   const focusClearTimerRef = useRef<number | null>(null);
   const detailFocusClearTimerRef = useRef<number | null>(null);
   const suppressDetailHighlightClearRef = useRef(false);
-  const editorClassName = [
-    props.className,
-    `mobile-${mobileView}-open`,
-    props.activeChatId ? "mobile-chat-detail" : "mobile-chat-list"
-  ]
-    .filter(Boolean)
-    .join(" ");
+  const editorClassName = props.className;
   const layoutStyle = {
     "--planner-width": `${props.layout.plannerWidth}px`,
     "--chat-width": `${props.layout.chatWidth}px`,
@@ -154,10 +147,6 @@ export function useEditorScreenState(props: UseEditorScreenStateProps): EditorSc
     setMobileView("chat", "push");
   }
 
-  function closeMobileChat() {
-    setMobileView("map");
-  }
-
   function openMobileDetails() {
     if (props.plannerCollapsed) {
       props.onTogglePlanner();
@@ -185,7 +174,7 @@ export function useEditorScreenState(props: UseEditorScreenStateProps): EditorSc
     if (focusClearTimerRef.current != null) window.clearTimeout(focusClearTimerRef.current);
     setFocusedMapPlaceId(null);
     props.onFocusItem(itemId);
-    setMobileView("map");
+    setMobileView("map", "push");
     focusClearTimerRef.current = window.setTimeout(() => {
       props.onFocusItem(null);
       focusClearTimerRef.current = null;
@@ -197,7 +186,7 @@ export function useEditorScreenState(props: UseEditorScreenStateProps): EditorSc
     props.onFocusItem(null);
     setFocusedMapPlaceId(placeId);
     setShouldCenterFocusedPlace(center);
-    if (center) setMobileView("map");
+    if (center) setMobileView("map", "push");
     focusClearTimerRef.current = window.setTimeout(() => {
       setFocusedMapPlaceId(null);
       setShouldCenterFocusedPlace(false);
@@ -217,7 +206,7 @@ export function useEditorScreenState(props: UseEditorScreenStateProps): EditorSc
     setDetailHighlight({ type, id });
     setFocusedMapPlaceId(null);
     setShouldCenterFocusedPlace(false);
-    setMobileView("details");
+    setMobileView("details", "push");
     if (type === "item" && props.scheduleCollapsed) props.onToggleSchedule();
     if (type === "place" && props.placesCollapsed) props.onTogglePlaces();
     suppressDetailHighlightClearRef.current = true;
@@ -316,7 +305,6 @@ export function useEditorScreenState(props: UseEditorScreenStateProps): EditorSc
     detailHighlight,
     mobileView,
     openMobileChatList,
-    closeMobileChat,
     openMobileDetails,
     openMobileMap: () => setMobileView("map", "push"),
     startAddItem,

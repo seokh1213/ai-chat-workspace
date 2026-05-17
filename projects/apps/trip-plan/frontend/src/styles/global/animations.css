@@ -1,0 +1,23 @@
+@keyframes marker-pulse {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-4px) scale(1.08);
+  }
+}
+
+@keyframes pending-dots {
+  from {
+    background-position-x: 0;
+  }
+  to {
+    background-position-x: 8px;
+  }
+}
+@keyframes loading-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

@@ -1,6 +1,5 @@
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { Clock3, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { createMapTileLayer, readMapTileMode, type MapTileMode, writeMapTileMode } from "../../lib/mapTiles";
@@ -60,7 +59,6 @@ export function MapCanvas({
   const openPopupPlaceIdRef = useRef<string | null>(null);
   const rebuildingLayersRef = useRef(false);
   const [tileMode, setTileMode] = useState<MapTileMode>(() => readMapTileMode());
-  const [showCoordinateNote, setShowCoordinateNote] = useState(true);
 
   useEffect(() => {
     if (!elementRef.current || mapRef.current) return;
@@ -289,15 +287,6 @@ export function MapCanvas({
           조사 장소
         </span>
       </div>
-      {showCoordinateNote && dayItems.filter(hasCoordinates).length === 0 ? (
-        <div className="map-empty-note">
-          <Clock3 size={15} />
-          <span>좌표가 있는 일정은 선택한 날짜 순서대로 지도에 표시됩니다.</span>
-          <button type="button" aria-label="좌표 안내 닫기" onClick={() => setShowCoordinateNote(false)}>
-            <X size={14} />
-          </button>
-        </div>
-      ) : null}
     </div>
   );
 }

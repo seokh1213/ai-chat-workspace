@@ -1,0 +1,10 @@
+@media (max-width: 390px), (max-width: 960px) and (max-height: 480px) and (orientation: landscape) {
+  .chat-panel {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  .map-legend,
+  .leaflet-bottom.leaflet-right {
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
+  }
+}

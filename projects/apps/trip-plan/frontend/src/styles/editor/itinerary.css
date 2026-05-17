@@ -1,0 +1,274 @@
+.section-add-button {
+  display: inline-flex;
+  width: 100%;
+  min-height: 40px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--secondary);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.section-add-button svg {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 auto;
+}
+
+.node-list {
+  display: grid;
+  gap: 8px;
+  padding-bottom: 80px;
+}
+
+.places-section.collapsed .section-toggle {
+  border-top: 1px solid var(--line);
+}
+
+.places-section.collapsed {
+  flex: 0 0 auto;
+  padding-bottom: 10px;
+  background: var(--surface);
+}
+
+.places-section.collapsed .section-toggle {
+  min-height: 56px;
+  align-items: center;
+}
+
+.plan-node {
+  display: flex;
+  gap: 10px;
+  padding: 10px;
+}
+
+.plan-node.detail-highlight,
+.place-card.detail-highlight {
+  border-style: dashed;
+  border-color: rgba(107, 114, 128, 0.64);
+  box-shadow: none;
+}
+
+.plan-node.memo-node {
+  background: var(--surface);
+}
+
+.node-sequence {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 0;
+  border-radius: 999px;
+  background: var(--violet);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.node-sequence.memo {
+  width: 42px;
+  border: 1px solid var(--line);
+  background: var(--surface-soft);
+  color: var(--secondary);
+  font-size: 11px;
+}
+
+.node-sequence.place-marker {
+  border: 1px solid var(--line);
+  background: var(--surface-soft);
+  color: var(--secondary);
+}
+
+.node-sequence:disabled {
+  cursor: default;
+}
+
+.node-content {
+  min-width: 0;
+  flex: 1;
+}
+
+.node-title-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.node-title-row strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.plan-node.expanded .node-title-row strong {
+  white-space: normal;
+}
+
+.node-memo {
+  display: block;
+  margin: 4px 0 0;
+  overflow: visible;
+  line-height: 1.45;
+}
+
+.node-memo.expanded {
+  display: block;
+  overflow: visible;
+}
+
+.node-markdown {
+  gap: 4px;
+  color: var(--secondary);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.node-markdown ul,
+.node-markdown ol {
+  gap: 2px;
+  padding-left: 18px;
+}
+
+.memo-toggle {
+  display: inline-flex;
+  width: fit-content;
+  min-height: 26px;
+  align-items: center;
+  gap: 5px;
+  margin-top: 7px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--secondary);
+  padding: 0 8px 0 9px;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.memo-toggle em {
+  color: var(--muted);
+  font-style: normal;
+}
+
+.memo-toggle svg {
+  color: var(--teal);
+}
+
+.node-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.node-actions button,
+.place-actions button {
+  display: inline-flex;
+  min-height: 30px;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border: 0;
+  background: transparent;
+  color: var(--secondary);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.node-actions button:disabled,
+.place-actions button:disabled {
+  cursor: default;
+  color: var(--muted);
+}
+
+.node-actions button:hover,
+.place-actions button:hover {
+  color: var(--teal);
+}
+
+.node-actions button:disabled:hover,
+.place-actions button:disabled:hover {
+  color: var(--muted);
+}
+
+.node-actions .danger-action,
+.node-actions .danger-action:hover,
+.place-actions .danger-action,
+.place-actions .danger-action:hover {
+  color: var(--secondary);
+}
+
+.place-card {
+  display: grid;
+  gap: 10px;
+  padding: 10px;
+}
+
+.place-card:not(.editing) {
+  display: flex;
+}
+
+.place-card.expanded {
+  border-color: var(--line);
+  box-shadow: none;
+}
+
+.place-card-main {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.place-card strong,
+.place-card em {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.place-card.expanded strong,
+.place-card.expanded em {
+  white-space: normal;
+}
+
+.place-card em {
+  color: var(--muted);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 700;
+}
+
+.place-detail {
+  display: block;
+  overflow: visible;
+  color: var(--secondary);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.place-detail.expanded {
+  display: block;
+  overflow: visible;
+}
+
+.place-toggle {
+  margin-top: 2px;
+}
+
+.place-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.place-form {
+  width: 100%;
+}

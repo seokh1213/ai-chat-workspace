@@ -1,0 +1,175 @@
+.chat-log-frame {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.chat-log {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+  padding: 14px;
+}
+
+.chat-scroll-latest {
+  position: absolute;
+  z-index: 6;
+  left: 50%;
+  bottom: 12px;
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid rgba(31, 193, 182, 0.28);
+  border-radius: 999px;
+  background: var(--surface-glass);
+  color: var(--teal);
+  box-shadow: var(--shadow);
+  font-size: 12px;
+  font-weight: 850;
+  padding: 0 11px;
+  transform: translateX(-50%);
+}
+
+.chat-home {
+  display: grid;
+  align-content: start;
+  gap: 14px;
+  overflow-y: auto;
+  padding: 14px;
+}
+
+.chat-panel > .chat-home {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.chat-home-section {
+  display: grid;
+  gap: 10px;
+}
+
+.chat-home-title {
+  display: flex;
+  min-height: var(--control-size);
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.chat-home-title svg {
+  color: var(--teal);
+}
+
+.small-action {
+  min-height: 32px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+
+.new-chat-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.chat-session-list,
+.checkpoint-list {
+  display: grid;
+  gap: 8px;
+}
+
+.chat-session-row,
+.checkpoint-row {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.chat-session-row,
+.checkpoint-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  text-align: left;
+}
+.chat-session-main {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border: 0;
+  background: transparent;
+  padding: 11px 12px;
+  text-align: left;
+}
+
+.checkpoint-row {
+  padding: 11px 12px;
+}
+
+.chat-session-row:hover {
+  border-color: rgba(31, 193, 182, 0.5);
+}
+
+.chat-session-main span,
+.checkpoint-row div {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.chat-session-main strong,
+.checkpoint-row strong,
+.chat-session-main em,
+.checkpoint-row span,
+.checkpoint-row em {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-session-main em,
+.checkpoint-row span,
+.checkpoint-row em {
+  color: var(--secondary);
+  font-size: 12px;
+  font-style: normal;
+}
+
+.row-actions {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: stretch;
+  align-self: stretch;
+  border-left: 1px solid var(--line);
+}
+
+.row-actions button {
+  display: grid;
+  width: 34px;
+  place-items: center;
+  border: 0;
+  border-right: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--secondary);
+}
+
+.row-actions button:last-child {
+  border-right: 0;
+  color: var(--danger);
+}
+
+.checkpoint-rollback-button {
+  min-height: 32px;
+  flex: 0 0 auto;
+  padding: 0 10px;
+  font-size: 12px;
+}

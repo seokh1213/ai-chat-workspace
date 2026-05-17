@@ -1,6 +1,7 @@
-import { ChevronDown, ChevronLeft, Copy, Save } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import {
   type FormEvent,
+  type ReactNode,
   useLayoutEffect,
   useRef,
   useState
@@ -40,7 +41,7 @@ interface ChatPanelProps {
   chatElapsedSeconds: number;
   chatStreamingText: string;
   chatOperationPreview: string[];
-  onCloseMobileChat: () => void;
+  onBack: () => void;
   onToggleChat: () => void;
   onOpenChatList: () => void;
   onCreateChatSession: () => void;
@@ -55,6 +56,10 @@ interface ChatPanelProps {
   onUpdateChatSessionTitle: (session: ChatSession, title: string) => Promise<void>;
   onCopyChatSession: (session: ChatSession) => Promise<void>;
   onDeleteChatSession: (session: ChatSession) => void;
+  mobileHeaderAction?: ReactNode;
+  hideActiveHeaderActions?: boolean;
+  hideCollapseButton?: boolean;
+  showListBackButton?: boolean;
 }
 
 export function ChatPanel(props: ChatPanelProps) {
@@ -158,45 +163,26 @@ export function ChatPanel(props: ChatPanelProps) {
   return (
     <aside className="chat-panel">
       <ChatPanelHeader
-        activeChatId={props.activeChatId}
+        activeChatSession={activeChatSession}
+        chatTitleDraft={chatTitleDraft}
+        isChatMarkdownCopied={isChatMarkdownCopied}
         isChatSessionCreating={props.isChatSessionCreating}
         isChatSessionsLoading={props.isChatSessionsLoading}
-        onCloseMobileChat={props.onCloseMobileChat}
+        isChatTitleSaving={isChatTitleSaving}
+        hideActiveHeaderActions={props.hideActiveHeaderActions}
+        hideCollapseButton={props.hideCollapseButton}
+        showListBackButton={props.showListBackButton}
+        onBack={props.onBack}
+        onChatTitleChange={setChatTitleDraft}
+        onCopyActiveChat={() => void copyActiveChatMarkdown()}
         onCreateChatSession={props.onCreateChatSession}
+        mobileHeaderAction={props.mobileHeaderAction}
+        onOpenChatList={props.onOpenChatList}
+        onSubmitChatTitle={submitActiveChatTitle}
         onToggleChat={props.onToggleChat}
       />
       {props.activeChatId ? (
         <>
-          <div className="active-chat-title">
-            {activeChatSession ? (
-              <form className="active-chat-toolbar" onSubmit={submitActiveChatTitle}>
-                <button className="text-back-button compact" type="button" onClick={props.onOpenChatList}>
-                  <ChevronLeft size={16} />
-                  목록
-                </button>
-                <div className="active-chat-name-field">
-                  <input
-                    value={chatTitleDraft}
-                    onChange={(event) => setChatTitleDraft(event.target.value)}
-                    aria-label="현재 대화 이름"
-                    placeholder="대화 이름"
-                  />
-                </div>
-                <button
-                  className="secondary-button compact-save"
-                  type="submit"
-                  disabled={isChatTitleSaving || !chatTitleDraft.trim() || chatTitleDraft.trim() === activeChatSession.title}
-                >
-                  <Save size={14} />
-                  저장
-                </button>
-                <button className="secondary-button compact-save" type="button" onClick={() => void copyActiveChatMarkdown()}>
-                  <Copy size={14} />
-                  {isChatMarkdownCopied ? "복사됨" : "전체 복사"}
-                </button>
-              </form>
-            ) : null}
-          </div>
           <div className="chat-log-frame">
             <div
               className="chat-log"

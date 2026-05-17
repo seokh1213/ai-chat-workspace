@@ -1,7 +1,7 @@
-import { Bot, ChevronLeft, PanelLeftClose } from "lucide-react";
+import { CalendarDays, ChevronLeft, Info, MapPin, PanelLeftClose } from "lucide-react";
 import type { FormEvent, KeyboardEvent as ReactKeyboardEvent, PointerEvent as ReactPointerEvent } from "react";
+import { useState } from "react";
 
-import { mobileDayLabel } from "../../lib/tripDisplay";
 import type {
   ItineraryItem,
   Place,
@@ -37,7 +37,6 @@ interface PlannerSidebarProps {
   placesCollapsed: boolean;
   detailHighlight: { type: "item" | "place"; id: string } | null;
   onBack: () => void;
-  onOpenMobileChatList: () => void;
   onTogglePlanner: () => void;
   onMetaFormChange: (form: TripFormState) => void;
   onSubmitMeta: (event: FormEvent) => void;
@@ -68,20 +67,43 @@ interface PlannerSidebarProps {
 }
 
 export function PlannerSidebar(props: PlannerSidebarProps) {
+  const [metaOpen, setMetaOpen] = useState(false);
+  const destinationText = props.metaForm.destinationName || props.tripState.trip.destinationName || "목적지 미정";
+  const startDate = props.metaForm.startDate || props.tripState.trip.startDate;
+  const endDate = props.metaForm.endDate || props.tripState.trip.endDate;
+  const dateText = [startDate, endDate].filter(Boolean).join(" - ") || "기간 미정";
+
   return (
     <aside className="planner-sidebar">
       <div className="panel-header">
-        <button className="text-back-button" type="button" onClick={props.onBack}>
+        <button className="icon-button header-icon-button workspace-back-button" type="button" aria-label="여행 목록으로 돌아가기" onClick={props.onBack}>
           <ChevronLeft size={16} />
-          여행 목록
         </button>
+        <div className="planner-header-title">
+          <strong>{props.metaForm.title || props.tripState.trip.title || "여행 이름 미정"}</strong>
+          <div className="planner-header-meta">
+            <span>
+              <MapPin size={12} />
+              {destinationText}
+            </span>
+            <em>
+              <CalendarDays size={12} />
+              {dateText}
+            </em>
+          </div>
+        </div>
         <div className="panel-header-actions">
           <ThemeToggle />
-          <button className="secondary-button mobile-chat-entry" type="button" onClick={props.onOpenMobileChatList}>
-            <Bot size={15} />
-            대화
+          <button
+            className={metaOpen ? "icon-button header-icon-button active" : "icon-button header-icon-button"}
+            type="button"
+            aria-label="여행 정보"
+            aria-pressed={metaOpen}
+            onClick={() => setMetaOpen((value) => !value)}
+          >
+            <Info size={16} />
           </button>
-          <button className="icon-button" type="button" aria-label="왼쪽 패널 접기" onClick={props.onTogglePlanner}>
+          <button className="icon-button header-icon-button desktop-panel-toggle" type="button" aria-label="왼쪽 패널 접기" onClick={props.onTogglePlanner}>
             <PanelLeftClose size={17} />
           </button>
         </div>
@@ -89,26 +111,12 @@ export function PlannerSidebar(props: PlannerSidebarProps) {
 
       <TripMetaForm
         form={props.metaForm}
+        open={metaOpen}
         saving={props.isMetaSaving}
         onChange={props.onMetaFormChange}
         onSubmit={props.onSubmitMeta}
         onDelete={props.onDeleteTrip}
       />
-
-      <nav className="mobile-day-picker" aria-label="날짜 선택">
-        {props.tripState.days.map((day) => (
-          <button
-            className={day.id === props.selectedDayId ? "active" : ""}
-            key={day.id}
-            type="button"
-            onClick={() => props.onSelectDay(day.id)}
-          >
-            <strong>Day {day.dayNumber}</strong>
-            <span>{mobileDayLabel(day)}</span>
-            <em>{props.itemCountByDay.get(day.id) ?? 0}개</em>
-          </button>
-        ))}
-      </nav>
 
       <div
         className="planner-sections"

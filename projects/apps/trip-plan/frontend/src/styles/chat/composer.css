@@ -1,0 +1,265 @@
+.chat-attachment-list {
+  display: flex;
+  max-width: 100%;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.chat-attachment {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  width: min(240px, 100%);
+  min-height: 48px;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  padding: 4px 8px 4px 4px;
+  text-decoration: none;
+}
+
+.chat-attachment.image {
+  grid-template-columns: 56px minmax(0, 1fr);
+}
+
+.chat-attachment.image img {
+  width: 56px;
+  height: 42px;
+  border-radius: 6px;
+  background: var(--surface-soft);
+  object-fit: cover;
+}
+
+.attachment-file-icon {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 6px;
+  background: var(--surface-soft);
+  color: var(--secondary);
+}
+
+.chat-attachment > span:not(.attachment-file-icon),
+.pending-attachment > span:not(.attachment-file-icon) {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.chat-attachment strong,
+.pending-attachment strong {
+  min-width: 0;
+  overflow: hidden;
+  color: inherit;
+  font-size: 12px;
+  font-weight: 850;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-attachment em,
+.pending-attachment em {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 750;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.user-message .chat-attachment {
+  border-color: rgba(255, 255, 255, 0.26);
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+}
+
+.user-message .chat-attachment em {
+  color: rgba(255, 255, 255, 0.76);
+}
+
+.user-message .attachment-file-icon {
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
+}
+
+.chat-composer {
+  display: grid;
+  gap: 8px;
+  border-top: 1px solid var(--line);
+  background: var(--surface);
+  padding: 10px 12px 12px;
+}
+
+.chat-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 44px;
+  align-items: stretch;
+  gap: 8px;
+  border-top: 1px solid var(--line);
+  padding: 12px;
+}
+
+.chat-form textarea {
+  min-height: 76px;
+  padding: 10px;
+  line-height: 1.45;
+}
+
+.chat-composer .chat-form {
+  grid-template-columns: 40px minmax(0, 1fr) 44px;
+  border-top: 0;
+  padding: 0;
+}
+
+.attach-button {
+  display: grid;
+  width: 40px;
+  min-height: 76px;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-soft);
+  color: var(--secondary);
+}
+
+.attach-button:hover {
+  border-color: rgba(31, 193, 182, 0.4);
+  background: var(--teal-soft);
+  color: var(--teal);
+}
+
+.pending-attachment-tray {
+  display: flex;
+  max-width: 100%;
+  gap: 8px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  padding-bottom: 2px;
+  scrollbar-width: thin;
+}
+
+.pending-attachment {
+  display: grid;
+  grid-template-columns: 44px minmax(86px, 1fr) 24px;
+  width: min(224px, 100%);
+  min-height: 54px;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-soft);
+  color: var(--text);
+  padding: 5px 6px;
+}
+
+.pending-attachment img {
+  width: 44px;
+  height: 44px;
+  border-radius: 6px;
+  background: var(--surface);
+  object-fit: cover;
+}
+
+.pending-attachment .attachment-file-icon {
+  width: 44px;
+  height: 44px;
+  background: var(--surface);
+}
+
+.pending-attachment.queued {
+  border-color: rgba(154, 160, 166, 0.28);
+  background: var(--surface-soft);
+}
+
+.pending-attachment.uploading {
+  border-color: rgba(31, 193, 182, 0.24);
+  background: rgba(31, 193, 182, 0.04);
+}
+
+.pending-attachment.uploading .attachment-file-icon,
+.pending-attachment.uploading img {
+  opacity: 0.72;
+}
+
+.pending-attachment.uploading em::after {
+  content: "";
+  display: inline-block;
+  width: 18px;
+  height: 6px;
+  margin-left: 5px;
+  background: radial-gradient(circle, currentColor 1.5px, transparent 2.5px) 0 50% / 6px 6px repeat-x;
+  opacity: 0.62;
+  vertical-align: middle;
+  animation: pending-dots 1s linear infinite;
+}
+
+.pending-attachment.ready {
+  border-color: rgba(31, 193, 182, 0.34);
+  background: rgba(31, 193, 182, 0.06);
+}
+
+.pending-attachment.failed {
+  border-color: rgba(255, 97, 104, 0.36);
+  background: rgba(255, 97, 104, 0.07);
+}
+
+.pending-attachment.failed em {
+  color: var(--danger-text);
+}
+
+.pending-attachment button {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  padding: 0;
+}
+
+.pending-attachment button:hover {
+  background: rgba(17, 24, 39, 0.06);
+  color: var(--text);
+}
+
+.send-button {
+  width: 44px;
+  height: 100%;
+  min-height: 76px;
+  align-self: stretch;
+  border: 0;
+  border-radius: 8px;
+  background: var(--teal);
+  color: #fff;
+}
+
+.send-button:disabled {
+  background: var(--disabled-button);
+  color: #fff;
+  opacity: 1;
+}
+
+.send-button.stop {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--secondary);
+}
+
+.send-button.stop:hover {
+  border-color: rgba(17, 24, 39, 0.24);
+  background: var(--surface-soft);
+  color: var(--ink);
+}
+

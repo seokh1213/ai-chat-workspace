@@ -1,0 +1,134 @@
+.trip-row-body span,
+.empty-state span,
+.assistant-message,
+.user-message,
+.chat-header span,
+.map-top-card span,
+.node-title-row span,
+.node-memo,
+.place-card span,
+.calendar-summary {
+  color: var(--secondary);
+  font-size: 12px;
+}
+
+.primary-button,
+.secondary-button,
+.danger-button,
+.icon-button,
+.text-back-button,
+.send-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.primary-button {
+  min-height: var(--control-size);
+  border: 0;
+  background: var(--teal);
+  color: #fff;
+  padding: 0 14px;
+}
+
+.secondary-button {
+  min-height: var(--control-size);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--secondary);
+  padding: 0 14px;
+}
+
+.icon-button {
+  width: var(--control-size);
+  height: var(--control-size);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--secondary);
+}
+
+.icon-button.copied {
+  border-color: rgba(31, 193, 182, 0.45);
+  background: var(--teal-soft);
+  color: var(--teal);
+}
+
+.panel-header .icon-button,
+.chat-header .icon-button,
+.header-icon-button {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+
+.panel-header .icon-button.active,
+.panel-header .icon-button[aria-pressed="true"],
+.chat-header .icon-button.copied,
+.header-icon-button.active,
+.header-icon-button[aria-pressed="true"] {
+  background: var(--teal-soft);
+  color: var(--teal);
+}
+
+.header-icon-button.copied {
+  background: var(--teal-soft);
+  color: var(--teal);
+}
+
+.icon-button.small {
+  width: 32px;
+  height: 32px;
+}
+
+.theme-toggle[aria-pressed="true"] {
+  border-color: rgba(45, 212, 191, 0.45);
+  background: var(--teal-soft);
+  color: var(--teal);
+}
+
+.panel-header .theme-toggle {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+
+.panel-header .theme-toggle[aria-pressed="true"] {
+  background: var(--teal-soft);
+}
+
+.text-back-button {
+  min-height: var(--control-size);
+  border: 0;
+  background: transparent;
+  color: var(--secondary);
+  padding: 0 4px;
+}
+
+.text-back-button.compact {
+  justify-content: flex-start;
+  padding: 0;
+}
+
+.primary-button:hover,
+.send-button:hover {
+  background: var(--primary-hover);
+}
+
+.secondary-button:hover,
+.icon-button:hover,
+.text-back-button:hover,
+.map-panel-button:hover {
+  border-color: rgba(31, 193, 182, 0.45);
+  color: var(--teal);
+}
+
+.panel-header .icon-button:hover,
+.chat-header .icon-button:hover,
+.header-icon-button:hover {
+  border-color: transparent;
+  background: var(--surface-soft);
+}

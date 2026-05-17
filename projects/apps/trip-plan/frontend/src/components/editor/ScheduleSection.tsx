@@ -11,7 +11,7 @@ import type { ItineraryItem, TripDay, UpsertItineraryItemRequest } from "../../t
 import { MarkdownContent } from "../common/MarkdownContent";
 import { ItemForm } from "./ItemForm";
 
-interface ScheduleSectionProps {
+export interface ScheduleSectionProps {
   collapsed: boolean;
   days: TripDay[];
   selectedDayId: string;

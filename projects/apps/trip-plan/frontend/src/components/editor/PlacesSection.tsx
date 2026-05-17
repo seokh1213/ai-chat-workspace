@@ -13,7 +13,7 @@ import type { Place, UpsertPlaceRequest } from "../../types";
 import { MarkdownContent } from "../common/MarkdownContent";
 import { PlaceForm } from "./PlaceForm";
 
-interface PlacesSectionProps {
+export interface PlacesSectionProps {
   collapsed: boolean;
   visiblePlaces: Place[];
   placeForm: UpsertPlaceRequest;

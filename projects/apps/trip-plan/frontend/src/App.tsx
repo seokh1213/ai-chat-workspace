@@ -1,4 +1,6 @@
 import {
+  lazy,
+  Suspense,
   useEffect,
   useMemo,
   useState
@@ -6,7 +8,6 @@ import {
 import type { TripState } from "./types";
 import { ErrorScreen } from "./components/common/ErrorScreen";
 import { AppLoadingScreen } from "./components/common/AppLoadingScreen";
-import { EditorScreen } from "./components/editor/EditorScreen";
 import { SetupScreen } from "./components/setup/SetupScreen";
 import { SelectScreen } from "./components/workspace/SelectScreen";
 import { type EditorLayout, readEditorLayout, writeEditorLayout } from "./lib/editorLayout";
@@ -18,6 +19,10 @@ import { useTripRouteActions } from "./lib/useTripRouteActions";
 import { useWorkspaceManager } from "./lib/useWorkspaceManager";
 
 type LoadState = "loading" | "ready" | "error";
+
+const EditorScreen = lazy(() =>
+  import("./components/editor/EditorScreen").then((module) => ({ default: module.EditorScreen }))
+);
 
 export function App() {
   const [screen, setScreen] = useState<Screen>("select");
@@ -231,78 +236,87 @@ export function App() {
       .join(" ");
 
     return (
-      <EditorScreen
-        className={editorClassName}
-        tripState={tripState}
-        selectedDay={selectedDay}
-        selectedDayId={selectedDayId}
-        focusedItemId={focusedItemId}
-        layout={editorLayout}
-        metaForm={metaForm}
-        isMetaSaving={isMetaSaving}
-        onLayoutChange={setEditorLayout}
-        onMetaFormChange={setMetaForm}
-        onSubmitMeta={submitMeta}
-        onSelectDay={selectDay}
-        dayItems={dayItems}
-        plannerCollapsed={plannerCollapsed}
-        chatCollapsed={chatCollapsed}
-        scheduleCollapsed={scheduleCollapsed}
-        placesCollapsed={placesCollapsed}
-        onTogglePlanner={() => setPlannerCollapsed((value) => !value)}
-        onToggleChat={() => setChatCollapsed((value) => !value)}
-        onToggleSchedule={() => setScheduleCollapsed((value) => !value)}
-        onTogglePlaces={() => setPlacesCollapsed((value) => !value)}
-        itemForm={itemForm}
-        editingItemId={editingItemId}
-        onItemFormChange={setItemForm}
-        onSubmitItem={submitItem}
-        onEditItem={startEditItem}
-        onCancelEditItem={cancelEditItem}
-        onUsePlace={usePlaceAsItem}
-        placeForm={placeForm}
-        editingPlaceId={editingPlaceId}
-        onPlaceFormChange={setPlaceForm}
-        onSubmitPlace={submitPlace}
-        onEditPlace={startEditPlace}
-        onCancelEditPlace={cancelEditPlace}
-        onDeletePlace={(place) => void removePlace(place)}
-        onFocusItem={setFocusedItemId}
-        onDeleteItem={removeItem}
-        onBack={navigateToSelect}
-        chatSessions={chatSessions}
-        chatSessionId={chatSessionId}
-        activeChatId={activeChatId}
-        isChatSessionCreating={isChatSessionCreating}
-        isChatSessionsLoading={isChatSessionsLoading}
-        isChatDetailLoading={isChatDetailLoading}
-        checkpoints={tripState.checkpoints}
-        isRollingBack={isRollingBack}
-        messages={messages}
-        editRuns={editRuns}
-        pendingChatAttachments={pendingChatAttachments}
-        chatText={chatText}
-        isChatSending={isChatSending}
-        chatStreamLabel={chatStreamLabel}
-        chatActivity={chatActivity}
-        chatElapsedSeconds={chatElapsedSeconds}
-        chatStreamingText={chatStreamingText}
-        chatOperationPreview={chatOperationPreview}
-        onSelectChatSession={(sessionId) => void selectChatSession(sessionId)}
-        onCreateChatSession={() => void createNextChatSession()}
-        onOpenChatList={openChatList}
-        onRollbackCheckpoint={(checkpointId) => void rollbackToCheckpoint(checkpointId)}
-        onChatTextChange={setChatText}
-        onAddChatFiles={(files) => void addPendingChatFiles(files)}
-        onRemovePendingChatAttachment={(localId) => void removePendingChatAttachment(localId)}
-        onSubmitChat={submitChat}
-        onStopChat={stopChatResponse}
-        onDeleteTrip={() => void deleteActiveTrip()}
-        onRenameChatSession={(session) => void renameChat(session)}
-        onUpdateChatSessionTitle={(session, title) => updateChatTitle(session, title)}
-        onCopyChatSession={(session) => copyChatSessionMarkdown(session)}
-        onDeleteChatSession={(session) => void removeChat(session)}
-      />
+      <Suspense
+        fallback={(
+          <AppLoadingScreen
+            title="여행 작업실을 여는 중입니다"
+            detail="지도와 대화 편집 도구를 준비하고 있습니다."
+          />
+        )}
+      >
+        <EditorScreen
+          className={editorClassName}
+          tripState={tripState}
+          selectedDay={selectedDay}
+          selectedDayId={selectedDayId}
+          focusedItemId={focusedItemId}
+          layout={editorLayout}
+          metaForm={metaForm}
+          isMetaSaving={isMetaSaving}
+          onLayoutChange={setEditorLayout}
+          onMetaFormChange={setMetaForm}
+          onSubmitMeta={submitMeta}
+          onSelectDay={selectDay}
+          dayItems={dayItems}
+          plannerCollapsed={plannerCollapsed}
+          chatCollapsed={chatCollapsed}
+          scheduleCollapsed={scheduleCollapsed}
+          placesCollapsed={placesCollapsed}
+          onTogglePlanner={() => setPlannerCollapsed((value) => !value)}
+          onToggleChat={() => setChatCollapsed((value) => !value)}
+          onToggleSchedule={() => setScheduleCollapsed((value) => !value)}
+          onTogglePlaces={() => setPlacesCollapsed((value) => !value)}
+          itemForm={itemForm}
+          editingItemId={editingItemId}
+          onItemFormChange={setItemForm}
+          onSubmitItem={submitItem}
+          onEditItem={startEditItem}
+          onCancelEditItem={cancelEditItem}
+          onUsePlace={usePlaceAsItem}
+          placeForm={placeForm}
+          editingPlaceId={editingPlaceId}
+          onPlaceFormChange={setPlaceForm}
+          onSubmitPlace={submitPlace}
+          onEditPlace={startEditPlace}
+          onCancelEditPlace={cancelEditPlace}
+          onDeletePlace={(place) => void removePlace(place)}
+          onFocusItem={setFocusedItemId}
+          onDeleteItem={removeItem}
+          onBack={navigateToSelect}
+          chatSessions={chatSessions}
+          chatSessionId={chatSessionId}
+          activeChatId={activeChatId}
+          isChatSessionCreating={isChatSessionCreating}
+          isChatSessionsLoading={isChatSessionsLoading}
+          isChatDetailLoading={isChatDetailLoading}
+          checkpoints={tripState.checkpoints}
+          isRollingBack={isRollingBack}
+          messages={messages}
+          editRuns={editRuns}
+          pendingChatAttachments={pendingChatAttachments}
+          chatText={chatText}
+          isChatSending={isChatSending}
+          chatStreamLabel={chatStreamLabel}
+          chatActivity={chatActivity}
+          chatElapsedSeconds={chatElapsedSeconds}
+          chatStreamingText={chatStreamingText}
+          chatOperationPreview={chatOperationPreview}
+          onSelectChatSession={(sessionId) => void selectChatSession(sessionId)}
+          onCreateChatSession={() => void createNextChatSession()}
+          onOpenChatList={openChatList}
+          onRollbackCheckpoint={(checkpointId) => void rollbackToCheckpoint(checkpointId)}
+          onChatTextChange={setChatText}
+          onAddChatFiles={(files) => void addPendingChatFiles(files)}
+          onRemovePendingChatAttachment={(localId) => void removePendingChatAttachment(localId)}
+          onSubmitChat={submitChat}
+          onStopChat={stopChatResponse}
+          onDeleteTrip={() => void deleteActiveTrip()}
+          onRenameChatSession={(session) => void renameChat(session)}
+          onUpdateChatSessionTitle={(session, title) => updateChatTitle(session, title)}
+          onCopyChatSession={(session) => copyChatSessionMarkdown(session)}
+          onDeleteChatSession={(session) => void removeChat(session)}
+        />
+      </Suspense>
     );
   }
 

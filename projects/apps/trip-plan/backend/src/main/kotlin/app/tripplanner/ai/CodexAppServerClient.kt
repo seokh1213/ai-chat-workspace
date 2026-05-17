@@ -349,9 +349,7 @@ private fun JsonNode.findActivityDetail(depth: Int = 0): String? {
         activityDetailKeys.forEach { key ->
             path(key).findActivityDetail(depth + 1)?.let { return it }
         }
-        val fields = fields()
-        while (fields.hasNext()) {
-            val value = fields.next().value
+        for ((_, value) in properties()) {
             value.findActivityDetail(depth + 1)?.let { return it }
         }
     }
