@@ -1,4 +1,4 @@
-import { startTransition, type Dispatch, type FormEvent, type SetStateAction, useState } from "react";
+import { type Dispatch, type FormEvent, type SetStateAction, useState } from "react";
 
 import {
   addItineraryItem,
@@ -57,10 +57,9 @@ export function useTripEditorActions({
   const [isMetaSaving, setIsMetaSaving] = useState(false);
 
   function selectDay(dayId: string) {
+    if (dayId === selectedDayId) return;
     setFocusedItemId(null);
-    startTransition(() => {
-      setSelectedDayId(dayId);
-    });
+    setSelectedDayId(dayId);
   }
 
   function cancelEditItem() {

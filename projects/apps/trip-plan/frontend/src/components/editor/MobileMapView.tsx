@@ -46,7 +46,7 @@ export function MobileMapView({ props, state }: MobileMapViewProps) {
         onFocusPlace={state.highlightPlaceOnMap}
         onShowItemDetails={state.showItemDetails}
         onShowPlaceDetails={state.showPlaceDetails}
-        layoutKey={`mobile-map-${props.selectedDayId}-${state.focusedMapPlaceId ?? ""}-${props.focusedItemId ?? ""}`}
+        layoutKey={`mobile-map-${state.focusedMapPlaceId ?? ""}-${props.focusedItemId ?? ""}`}
       />
     </section>
   );

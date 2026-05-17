@@ -1,4 +1,4 @@
-import { memo } from "react";
+import { memo, useMemo } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkBreaks from "remark-breaks";
 import remarkGfm from "remark-gfm";
@@ -6,9 +6,10 @@ import remarkGfm from "remark-gfm";
 const markdownPlugins = [remarkGfm, remarkBreaks, remarkLenientStrong];
 
 export const MarkdownContent = memo(function MarkdownContent(props: { content: string; className?: string }) {
+  const normalizedContent = useMemo(() => normalizeMarkdownForRender(props.content), [props.content]);
   return (
     <div className={["message-content", props.className].filter(Boolean).join(" ")}>
-      <ReactMarkdown remarkPlugins={markdownPlugins}>{normalizeMarkdownForRender(props.content)}</ReactMarkdown>
+      <ReactMarkdown remarkPlugins={markdownPlugins}>{normalizedContent}</ReactMarkdown>
     </div>
   );
 });

@@ -23,6 +23,12 @@ import {
   type MapPopupActions
 } from "./MapPopup";
 
+type PlaceMarkerEntry = {
+  marker: L.CircleMarker;
+  point: L.LatLngExpression;
+  coordinateKey: string;
+};
+
 export interface MapCanvasProps {
   tripState: TripState;
   selectedDay?: TripDay;
@@ -34,6 +40,27 @@ export interface MapCanvasProps {
   onShowItemDetails: (itemId: string) => void;
   onShowPlaceDetails: (placeId: string) => void;
   layoutKey: string;
+}
+
+function coordinateKey(lat: number | null | undefined, lng: number | null | undefined) {
+  return `${lat?.toFixed(6)},${lng?.toFixed(6)}`;
+}
+
+function bindLazyPopup(marker: L.Layer, createElement: () => MapPopupElement) {
+  let popupElement: MapPopupElement | null = null;
+  marker.bindPopup(() => {
+    popupElement?.destroy();
+    popupElement = createElement();
+    return popupElement;
+  });
+  marker.on("popupclose", () => {
+    popupElement?.destroy();
+    popupElement = null;
+  });
+  marker.on("remove", () => {
+    popupElement?.destroy();
+    popupElement = null;
+  });
 }
 
 export function MapCanvas({
@@ -51,15 +78,36 @@ export function MapCanvas({
   const trip = tripState.trip;
   const elementRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<L.Map | null>(null);
-  const layerRef = useRef<L.LayerGroup | null>(null);
+  const placeLayerRef = useRef<L.LayerGroup | null>(null);
+  const routeLayerRef = useRef<L.LayerGroup | null>(null);
   const tileLayerRef = useRef<L.TileLayer | null>(null);
+  const placeMarkersRef = useRef<Map<string, PlaceMarkerEntry>>(new Map());
   const skipNextAutoFitRef = useRef(false);
   const hasPersistedMapViewRef = useRef(false);
   const suppressPersistUntilRef = useRef(0);
   const openPopupItemIdRef = useRef<string | null>(null);
   const openPopupPlaceIdRef = useRef<string | null>(null);
   const rebuildingLayersRef = useRef(false);
+  const latestTripStateRef = useRef(tripState);
+  const latestDayItemsRef = useRef(dayItems);
+  const latestSelectedDayIdRef = useRef(selectedDay?.id ?? "");
+  const latestOnFocusPlaceRef = useRef(onFocusPlace);
+  const popupActionsRef = useRef<MapPopupActions>({
+    onShowItemDetails,
+    onShowPlaceDetails
+  });
   const [tileMode, setTileMode] = useState<MapTileMode>(() => readMapTileMode());
+
+  useEffect(() => {
+    latestTripStateRef.current = tripState;
+    latestDayItemsRef.current = dayItems;
+    latestSelectedDayIdRef.current = selectedDay?.id ?? "";
+    latestOnFocusPlaceRef.current = onFocusPlace;
+    popupActionsRef.current = {
+      onShowItemDetails,
+      onShowPlaceDetails
+    };
+  }, [dayItems, onFocusPlace, onShowItemDetails, onShowPlaceDetails, selectedDay?.id, tripState]);
 
   useEffect(() => {
     if (!elementRef.current || mapRef.current) return;
@@ -78,7 +126,8 @@ export function MapCanvas({
     tileLayerRef.current = initialTileLayer;
     writeMapTileMode(tileMode);
 
-    layerRef.current = L.layerGroup().addTo(map);
+    placeLayerRef.current = L.layerGroup().addTo(map);
+    routeLayerRef.current = L.layerGroup().addTo(map);
     mapRef.current = map;
     const persistMapView = () => {
       if (Date.now() < suppressPersistUntilRef.current) return;
@@ -91,8 +140,10 @@ export function MapCanvas({
       map.off("moveend zoomend", persistMapView);
       map.remove();
       mapRef.current = null;
-      layerRef.current = null;
+      placeLayerRef.current = null;
+      routeLayerRef.current = null;
       tileLayerRef.current = null;
+      placeMarkersRef.current.clear();
     };
   }, [trip.destinationLat, trip.destinationLng, trip.destinationName, trip.id]);
 
@@ -141,87 +192,119 @@ export function MapCanvas({
 
   useEffect(() => {
     const map = mapRef.current;
-    const layer = layerRef.current;
+    const layer = placeLayerRef.current;
     if (!map || !layer) return;
 
     rebuildingLayersRef.current = true;
     layer.clearLayers();
-
-    const dayPoints: L.LatLngExpression[] = [];
-    const allPoints: L.LatLngExpression[] = [];
-    const selectedDayId = selectedDay?.id ?? "";
-    const itemCoordinates = new Set(
-      dayItems
-        .filter(hasCoordinates)
-        .map((item) => `${item.lat?.toFixed(6)},${item.lng?.toFixed(6)}`)
-    );
-    const popupActions: MapPopupActions = {
-      onShowItemDetails: (itemId) => {
-        onShowItemDetails(itemId);
-      },
-      onShowPlaceDetails: (placeId) => {
-        onShowPlaceDetails(placeId);
-      }
-    };
-
-    function bindLazyPopup(marker: L.Layer, createElement: () => MapPopupElement) {
-      let popupElement: MapPopupElement | null = null;
-      marker.bindPopup(() => {
-        popupElement?.destroy();
-        popupElement = createElement();
-        return popupElement;
-      });
-      marker.on("popupclose", () => {
-        popupElement?.destroy();
-        popupElement = null;
-      });
-      marker.once("remove", () => {
-        popupElement?.destroy();
-        popupElement = null;
-      });
-    }
+    placeMarkersRef.current.clear();
 
     dedupePlaces(tripState.places).filter(hasCoordinates).forEach((place) => {
-      const coordinateKey = `${place.lat?.toFixed(6)},${place.lng?.toFixed(6)}`;
-      const isFocusedPlace = place.id === focusedPlaceId;
-      const shouldKeepOpenPlace = place.id === openPopupPlaceIdRef.current;
-      if (itemCoordinates.has(coordinateKey) && !isFocusedPlace && !shouldKeepOpenPlace) return;
-
       const point: L.LatLngExpression = [place.lat, place.lng];
-      allPoints.push(point);
       const marker = L.circleMarker(point, {
-        radius: isFocusedPlace ? 9 : 7,
+        radius: 7,
         color: "#ffffff",
-        weight: isFocusedPlace ? 3 : 2,
-        fillColor: isFocusedPlace ? "#8b5cf6" : "#6b7280",
-        fillOpacity: isFocusedPlace ? 0.95 : 0.78
-      }).addTo(layer);
+        weight: 2,
+        fillColor: "#6b7280",
+        fillOpacity: 0.78
+      });
       bindLazyPopup(marker, () =>
-        createPlacePopupElement(place, itineraryUsagesForPlace(place, tripState, selectedDayId), {
-          onShowItemDetails: popupActions.onShowItemDetails,
-          onShowPlaceDetails: popupActions.onShowPlaceDetails
-        })
+        createPlacePopupElement(
+          place,
+          itineraryUsagesForPlace(place, latestTripStateRef.current, latestSelectedDayIdRef.current),
+          popupActionsRef.current
+        )
       );
       marker.on("click", () => {
         openPopupItemIdRef.current = null;
         openPopupPlaceIdRef.current = place.id;
-        onFocusPlace(place.id);
+        latestOnFocusPlaceRef.current(place.id);
       });
       marker.on("popupclose", () => {
         if (!rebuildingLayersRef.current && openPopupPlaceIdRef.current === place.id) {
           openPopupPlaceIdRef.current = null;
         }
       });
+      placeMarkersRef.current.set(place.id, {
+        marker,
+        point,
+        coordinateKey: coordinateKey(place.lat, place.lng)
+      });
+    });
+
+    const itemCoordinates = new Set(
+      latestDayItemsRef.current.filter(hasCoordinates).map((item) => coordinateKey(item.lat, item.lng))
+    );
+    placeMarkersRef.current.forEach(({ marker, coordinateKey: placeCoordinateKey }, placeId) => {
+      const shouldKeepOpenPlace = placeId === openPopupPlaceIdRef.current;
+      const shouldShow = !itemCoordinates.has(placeCoordinateKey) || placeId === focusedPlaceId || shouldKeepOpenPlace;
+      if (shouldShow) {
+        marker.addTo(layer);
+      }
+      if (shouldShow && (placeId === focusedPlaceId || shouldKeepOpenPlace)) {
+        marker.openPopup();
+      }
+    });
+
+    rebuildingLayersRef.current = false;
+  }, [tripState.places]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    placeMarkersRef.current.forEach(({ marker, point }, placeId) => {
+      const isFocusedPlace = placeId === focusedPlaceId;
+      marker.setRadius(isFocusedPlace ? 9 : 7);
+      marker.setStyle({
+        weight: isFocusedPlace ? 3 : 2,
+        fillColor: isFocusedPlace ? "#8b5cf6" : "#6b7280",
+        fillOpacity: isFocusedPlace ? 0.95 : 0.78
+      });
       if (isFocusedPlace) {
-        openPopupPlaceIdRef.current = place.id;
+        openPopupPlaceIdRef.current = placeId;
         marker.openPopup();
         if (centerFocusedPlace) {
           focusMapPoint(map, point, Math.max(map.getZoom(), 14));
         }
-      } else if (shouldKeepOpenPlace) {
+      }
+    });
+  }, [centerFocusedPlace, focusedPlaceId]);
+
+  useEffect(() => {
+    const layer = placeLayerRef.current;
+    if (!layer) return;
+
+    const itemCoordinates = new Set(dayItems.filter(hasCoordinates).map((item) => coordinateKey(item.lat, item.lng)));
+    placeMarkersRef.current.forEach(({ marker, coordinateKey: placeCoordinateKey }, placeId) => {
+      const shouldKeepOpenPlace = placeId === openPopupPlaceIdRef.current;
+      const shouldShow = !itemCoordinates.has(placeCoordinateKey) || placeId === focusedPlaceId || shouldKeepOpenPlace;
+      const isShown = layer.hasLayer(marker);
+
+      if (shouldShow && !isShown) {
+        marker.addTo(layer);
+      } else if (!shouldShow && isShown) {
+        layer.removeLayer(marker);
+      }
+
+      if (shouldShow && (placeId === focusedPlaceId || shouldKeepOpenPlace)) {
         marker.openPopup();
       }
     });
+  }, [dayItems, focusedPlaceId]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    const layer = routeLayerRef.current;
+    if (!map || !layer) return;
+
+    rebuildingLayersRef.current = true;
+    layer.clearLayers();
+
+    const dayPoints: L.LatLngExpression[] = [];
+    const allPoints = dedupePlaces(tripState.places)
+      .filter(hasCoordinates)
+      .map((place) => [place.lat, place.lng] as L.LatLngExpression);
 
     dayItems.filter(hasCoordinates).forEach((item, index) => {
       const point: L.LatLngExpression = [item.lat, item.lng];
@@ -238,10 +321,16 @@ export function MapCanvas({
         zIndexOffset: item.id === focusedItemId ? 1000 : index
       }).addTo(layer);
       bindLazyPopup(marker, () =>
-        createPlanPopupElement(item, itineraryUsagesAtCoordinate(tripState, item.lat, item.lng, selectedDayId), {
-          onShowItemDetails: popupActions.onShowItemDetails,
-          onShowPlaceDetails: popupActions.onShowPlaceDetails
-        })
+        createPlanPopupElement(
+          item,
+          itineraryUsagesAtCoordinate(
+            latestTripStateRef.current,
+            item.lat,
+            item.lng,
+            latestSelectedDayIdRef.current
+          ),
+          popupActionsRef.current
+        )
       );
       if (item.id === focusedItemId) {
         openPopupItemIdRef.current = item.id;
@@ -278,9 +367,8 @@ export function MapCanvas({
       }
     }
 
-    window.setTimeout(() => map.invalidateSize(), 0);
     rebuildingLayersRef.current = false;
-  }, [centerFocusedPlace, dayItems, focusedItemId, focusedPlaceId, selectedDay?.id, tripState]);
+  }, [dayItems, focusedItemId, tripState.places, tripState.trip]);
 
   return (
     <div className="map-canvas">

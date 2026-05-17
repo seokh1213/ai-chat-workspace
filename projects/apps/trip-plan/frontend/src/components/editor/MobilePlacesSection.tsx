@@ -1,4 +1,5 @@
 import { ChevronDown, ChevronRight, ChevronUp, Edit3, MapPinned, Navigation, Plus, Trash2 } from "lucide-react";
+import { memo, useCallback, useMemo, useRef } from "react";
 import type { ReactNode } from "react";
 
 import {
@@ -15,6 +16,12 @@ import { MobilePlaceForm } from "./MobilePlaceForm";
 import type { PlacesSectionProps } from "./PlacesSection";
 
 export function MobilePlacesSection(props: PlacesSectionProps) {
+  const onFocusPlaceOnMap = useStableEvent(props.onFocusPlaceOnMap);
+  const onUsePlace = useStableEvent(props.onUsePlace);
+  const onEditPlace = useStableEvent(props.onEditPlace);
+  const onDeletePlace = useStableEvent(props.onDeletePlace);
+  const onToggleExpandedPlace = useStableEvent(props.onToggleExpandedPlace);
+
   return (
     <section className="border-b border-[var(--line)] bg-[var(--surface)]">
       <button
@@ -60,7 +67,22 @@ export function MobilePlacesSection(props: PlacesSectionProps) {
             />
           ) : null}
           {props.visiblePlaces.map((place) => (
-            <MobilePlaceCard key={place.id} place={place} props={props} />
+            <MobilePlaceCard
+              key={place.id}
+              place={place}
+              editing={props.editingPlaceId === place.id}
+              expanded={props.expandedPlaces.has(place.id) || props.editingPlaceId === place.id}
+              highlighted={props.detailHighlight?.type === "place" && props.detailHighlight.id === place.id}
+              placeForm={props.placeForm}
+              onPlaceFormChange={props.onPlaceFormChange}
+              onSubmitPlace={props.onSubmitPlace}
+              onCancelPlace={props.onCancelPlace}
+              onFocusPlaceOnMap={onFocusPlaceOnMap}
+              onUsePlace={onUsePlace}
+              onEditPlace={onEditPlace}
+              onDeletePlace={onDeletePlace}
+              onToggleExpandedPlace={onToggleExpandedPlace}
+            />
           ))}
         </div>
       )}
@@ -68,14 +90,37 @@ export function MobilePlacesSection(props: PlacesSectionProps) {
   );
 }
 
-function MobilePlaceCard({ place, props }: { place: Place; props: PlacesSectionProps }) {
-  const localName = localizedPlaceName(place);
-  const detailText = placeDetailText(place);
-  const expanded = props.expandedPlaces.has(place.id) || props.editingPlaceId === place.id;
-  const previewText = previewPlaceDetail(detailText);
-  const expandable = previewText !== detailText || hasVisuallyLongPlaceLine(detailText);
+interface MobilePlaceCardProps {
+  place: Place;
+  editing: boolean;
+  expanded: boolean;
+  highlighted: boolean;
+  placeForm: PlacesSectionProps["placeForm"];
+  onPlaceFormChange: PlacesSectionProps["onPlaceFormChange"];
+  onSubmitPlace: PlacesSectionProps["onSubmitPlace"];
+  onCancelPlace: PlacesSectionProps["onCancelPlace"];
+  onFocusPlaceOnMap: (place: Place) => void;
+  onUsePlace: (place: Place) => void;
+  onEditPlace: (place: Place) => void;
+  onDeletePlace: (place: Place) => void;
+  onToggleExpandedPlace: (placeId: string) => void;
+}
 
-  if (props.editingPlaceId === place.id) {
+const MobilePlaceCard = memo(function MobilePlaceCard(props: MobilePlaceCardProps) {
+  const localName = useMemo(() => localizedPlaceName(props.place), [props.place]);
+  const detailState = useMemo(() => {
+    const detailText = placeDetailText(props.place);
+    const previewText = previewPlaceDetail(detailText);
+    const expandable = previewText !== detailText || hasVisuallyLongPlaceLine(detailText);
+    return {
+      detailText,
+      expandable,
+      previewText,
+      renderedText: expandable && !props.expanded ? previewText : detailText || "설명 없음"
+    };
+  }, [props.expanded, props.place]);
+
+  if (props.editing) {
     return (
       <MobilePlaceForm
         form={props.placeForm}
@@ -91,11 +136,9 @@ function MobilePlaceCard({ place, props }: { place: Place; props: PlacesSectionP
     <article
       className={[
         "grid grid-cols-[auto_minmax(0,1fr)] gap-3 rounded-md border bg-[var(--surface)] p-3",
-        props.detailHighlight?.type === "place" && props.detailHighlight.id === place.id
-          ? "border-dashed border-[rgba(107,114,128,0.64)]"
-          : "border-[var(--line)]"
+        props.highlighted ? "border-dashed border-[rgba(107,114,128,0.64)]" : "border-[var(--line)]"
       ].join(" ")}
-      data-detail-place-id={place.id}
+      data-detail-place-id={props.place.id}
     >
       <div className="grid h-8 w-8 place-items-center rounded-full border border-[var(--line)] bg-[var(--surface-soft)] text-[var(--secondary)]" aria-hidden="true">
         <MapPinned className="h-4 w-4" />
@@ -103,35 +146,63 @@ function MobilePlaceCard({ place, props }: { place: Place; props: PlacesSectionP
       <div className="min-w-0">
         <div className="grid min-w-0 gap-1">
           <strong className="min-w-0 text-[16px] font-extrabold leading-snug [overflow-wrap:anywhere]">{localName}</strong>
-          {localName !== place.name ? <em className="text-xs not-italic text-[var(--muted)]">{place.name}</em> : null}
+          {localName !== props.place.name ? <em className="text-xs not-italic text-[var(--muted)]">{props.place.name}</em> : null}
         </div>
         <MarkdownContent
-          content={expandable && !expanded ? previewText : detailText || "설명 없음"}
+          content={detailState.renderedText}
           className="mt-1 text-[13px] leading-relaxed text-[var(--secondary)]"
         />
-        {expandable ? (
+        {detailState.expandable ? (
           <button
             className="mt-2 inline-flex min-h-7 items-center gap-1.5 rounded-full border border-[var(--line)] bg-[var(--surface)] px-3 text-xs font-extrabold text-[var(--secondary)]"
             type="button"
-            aria-expanded={expanded}
-            onClick={() => props.onToggleExpandedPlace(place.id)}
+            aria-expanded={props.expanded}
+            onClick={() => props.onToggleExpandedPlace(props.place.id)}
           >
-            <span>{expanded ? "접기" : "전체 보기"}</span>
-            <em className="text-[var(--muted)] not-italic">{expanded ? "요약" : placeDetailCountLabel(detailText)}</em>
-            {expanded ? <ChevronUp className="h-3.5 w-3.5 text-[var(--teal)]" /> : <ChevronDown className="h-3.5 w-3.5 text-[var(--teal)]" />}
+            <span>{props.expanded ? "접기" : "전체 보기"}</span>
+            <em className="text-[var(--muted)] not-italic">{props.expanded ? "요약" : placeDetailCountLabel(detailState.detailText)}</em>
+            {props.expanded ? <ChevronUp className="h-3.5 w-3.5 text-[var(--teal)]" /> : <ChevronDown className="h-3.5 w-3.5 text-[var(--teal)]" />}
           </button>
         ) : null}
         <div className="mt-2 flex flex-wrap gap-2">
-          <MobileAction disabled={!hasCoordinates(place)} onClick={() => props.onFocusPlaceOnMap(place)} icon={<Navigation className="h-3.5 w-3.5" aria-hidden="true" />}>
-            {hasCoordinates(place) ? "지도" : "좌표 없음"}
+          <MobileAction disabled={!hasCoordinates(props.place)} onClick={() => props.onFocusPlaceOnMap(props.place)} icon={<Navigation className="h-3.5 w-3.5" aria-hidden="true" />}>
+            {hasCoordinates(props.place) ? "지도" : "좌표 없음"}
           </MobileAction>
-          <MobileAction onClick={() => props.onUsePlace(place)} icon={<Plus className="h-3.5 w-3.5" aria-hidden="true" />}>일정</MobileAction>
-          <MobileAction onClick={() => props.onEditPlace(place)} icon={<Edit3 className="h-3.5 w-3.5" aria-hidden="true" />}>수정</MobileAction>
-          <MobileAction danger onClick={() => props.onDeletePlace(place)} icon={<Trash2 className="h-3.5 w-3.5" aria-hidden="true" />}>삭제</MobileAction>
+          <MobileAction onClick={() => props.onUsePlace(props.place)} icon={<Plus className="h-3.5 w-3.5" aria-hidden="true" />}>일정</MobileAction>
+          <MobileAction onClick={() => props.onEditPlace(props.place)} icon={<Edit3 className="h-3.5 w-3.5" aria-hidden="true" />}>수정</MobileAction>
+          <MobileAction danger onClick={() => props.onDeletePlace(props.place)} icon={<Trash2 className="h-3.5 w-3.5" aria-hidden="true" />}>삭제</MobileAction>
         </div>
       </div>
     </article>
   );
+}, areMobilePlaceCardsEqual);
+
+function areMobilePlaceCardsEqual(previous: MobilePlaceCardProps, next: MobilePlaceCardProps) {
+  return previous.place.id === next.place.id
+    && previous.place.name === next.place.name
+    && previous.place.category === next.place.category
+    && previous.place.rating === next.place.rating
+    && previous.place.reviews === next.place.reviews
+    && previous.place.note === next.place.note
+    && previous.place.address === next.place.address
+    && previous.place.source === next.place.source
+    && previous.place.sourceUrl === next.place.sourceUrl
+    && previous.place.imageUrl === next.place.imageUrl
+    && previous.place.lat === next.place.lat
+    && previous.place.lng === next.place.lng
+    && previous.place.status === next.place.status
+    && previous.editing === next.editing
+    && previous.expanded === next.expanded
+    && previous.highlighted === next.highlighted
+    && previous.placeForm === next.placeForm
+    && previous.onPlaceFormChange === next.onPlaceFormChange
+    && previous.onSubmitPlace === next.onSubmitPlace
+    && previous.onCancelPlace === next.onCancelPlace
+    && previous.onFocusPlaceOnMap === next.onFocusPlaceOnMap
+    && previous.onUsePlace === next.onUsePlace
+    && previous.onEditPlace === next.onEditPlace
+    && previous.onDeletePlace === next.onDeletePlace
+    && previous.onToggleExpandedPlace === next.onToggleExpandedPlace;
 }
 
 function MobileAction(props: { children: string; danger?: boolean; disabled?: boolean; icon: ReactNode; onClick: () => void }) {
@@ -148,4 +219,10 @@ function MobileAction(props: { children: string; danger?: boolean; disabled?: bo
       {props.children}
     </button>
   );
+}
+
+function useStableEvent<Args extends unknown[], Return>(callback: (...args: Args) => Return) {
+  const callbackRef = useRef(callback);
+  callbackRef.current = callback;
+  return useCallback((...args: Args) => callbackRef.current(...args), []);
 }

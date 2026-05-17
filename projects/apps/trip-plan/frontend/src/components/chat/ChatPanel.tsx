@@ -2,14 +2,17 @@ import { ChevronDown } from "lucide-react";
 import {
   type FormEvent,
   type ReactNode,
+  useCallback,
+  useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState
 } from "react";
 
 import {
   buildChatMessageContentMarkdown,
-  findPreviousUserMessage
+  messageDurationMsFromRun
 } from "../../lib/chat";
 import { isChatLogNearBottom, writeClipboardText } from "../../lib/dom";
 import type { AiEditRunSummary, ChatMessage, ChatRunActivityEvent, ChatSession, CheckpointSummary } from "../../types";
@@ -72,7 +75,17 @@ export function ChatPanel(props: ChatPanelProps) {
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
   const [showScrollToLatest, setShowScrollToLatest] = useState(false);
   const chatLogRef = useRef<HTMLDivElement | null>(null);
+  const chatCopyTimerRef = useRef<number | null>(null);
+  const messageCopyTimerRef = useRef<number | null>(null);
   const shouldAutoScrollChatRef = useRef(true);
+  const messageMeta = useMemo(() => buildMessageRenderMeta(props.messages, props.editRuns), [props.editRuns, props.messages]);
+
+  useEffect(() => {
+    return () => {
+      if (chatCopyTimerRef.current != null) window.clearTimeout(chatCopyTimerRef.current);
+      if (messageCopyTimerRef.current != null) window.clearTimeout(messageCopyTimerRef.current);
+    };
+  }, []);
 
   useLayoutEffect(() => {
     setChatTitleDraft(activeChatSession?.title ?? "");
@@ -153,14 +166,22 @@ export function ChatPanel(props: ChatPanelProps) {
     if (!activeChatSession) return;
     await props.onCopyChatSession(activeChatSession);
     setIsChatMarkdownCopied(true);
-    window.setTimeout(() => setIsChatMarkdownCopied(false), 1600);
+    if (chatCopyTimerRef.current != null) window.clearTimeout(chatCopyTimerRef.current);
+    chatCopyTimerRef.current = window.setTimeout(() => {
+      setIsChatMarkdownCopied(false);
+      chatCopyTimerRef.current = null;
+    }, 1600);
   }
 
-  async function copyChatMessageMarkdown(message: ChatMessage) {
+  const copyChatMessageMarkdown = useCallback(async (message: ChatMessage) => {
     await writeClipboardText(buildChatMessageContentMarkdown(message));
     setCopiedMessageId(message.id);
-    window.setTimeout(() => setCopiedMessageId(null), 1400);
-  }
+    if (messageCopyTimerRef.current != null) window.clearTimeout(messageCopyTimerRef.current);
+    messageCopyTimerRef.current = window.setTimeout(() => {
+      setCopiedMessageId(null);
+      messageCopyTimerRef.current = null;
+    }, 1400);
+  }, []);
 
   return (
     <aside className={["chat-panel", props.className].filter(Boolean).join(" ")}>
@@ -209,12 +230,12 @@ export function ChatPanel(props: ChatPanelProps) {
               {!props.isChatDetailLoading ? props.messages.map((message, index) => (
                 <ChatMessageBubble
                   copied={copiedMessageId === message.id}
-                  editRuns={props.editRuns}
+                  durationMs={messageMeta.get(message.id)?.durationMs ?? null}
+                  editRun={messageMeta.get(message.id)?.editRun ?? null}
                   key={message.id}
                   message={message}
                   messageIndex={index + 1}
-                  onCopyMessage={(targetMessage) => void copyChatMessageMarkdown(targetMessage)}
-                  previousUserMessage={findPreviousUserMessage(props.messages, message.id)}
+                  onCopyMessage={copyChatMessageMarkdown}
                 />
               )) : null}
               {props.isChatSending ? (
@@ -279,4 +300,29 @@ export function ChatPanel(props: ChatPanelProps) {
       )}
     </aside>
   );
+}
+
+type MessageRenderMeta = {
+  durationMs: number | null;
+  editRun: AiEditRunSummary | null;
+};
+
+function buildMessageRenderMeta(messages: ChatMessage[], editRuns: AiEditRunSummary[]): Map<string, MessageRenderMeta> {
+  const editRunByAssistantMessageId = new Map<string, AiEditRunSummary>();
+  editRuns.forEach((run) => {
+    if (run.assistantMessageId) editRunByAssistantMessageId.set(run.assistantMessageId, run);
+  });
+
+  const metaByMessageId = new Map<string, MessageRenderMeta>();
+  let previousUserMessage: ChatMessage | null = null;
+  messages.forEach((message) => {
+    const isUser = message.role === "user";
+    const editRun = isUser ? null : editRunByAssistantMessageId.get(message.id) ?? null;
+    metaByMessageId.set(message.id, {
+      durationMs: isUser ? null : messageDurationMsFromRun(message, editRun, previousUserMessage),
+      editRun
+    });
+    if (isUser) previousUserMessage = message;
+  });
+  return metaByMessageId;
 }

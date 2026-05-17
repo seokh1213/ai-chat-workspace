@@ -67,9 +67,11 @@ export function App() {
   const activeTrip = tripState?.trip ?? null;
   const days = tripState?.days ?? [];
   const selectedDay = days.find((day) => day.id === selectedDayId) ?? days[0];
+  const selectedDayKey = selectedDay?.id ?? "";
+  const itineraryItems = tripState?.itineraryItems ?? [];
   const dayItems = useMemo(
-    () => (selectedDay ? (tripState?.itineraryItems ?? []).filter((item) => item.tripDayId === selectedDay.id) : []),
-    [selectedDay, tripState]
+    () => (selectedDayKey ? itineraryItems.filter((item) => item.tripDayId === selectedDayKey) : []),
+    [itineraryItems, selectedDayKey]
   );
   const {
     pendingChatAttachments,

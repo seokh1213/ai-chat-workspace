@@ -16,10 +16,21 @@ export function messageDurationMs(
   editRuns: AiEditRunSummary[],
   previousUserMessage: ChatMessage | null
 ): number | null {
+  return messageDurationMsFromRun(
+    message,
+    editRuns.find((run) => run.assistantMessageId === message.id) ?? null,
+    previousUserMessage
+  );
+}
+
+export function messageDurationMsFromRun(
+  message: ChatMessage,
+  matchingRun: AiEditRunSummary | null,
+  previousUserMessage: ChatMessage | null
+): number | null {
   const metadataDuration = messageMetadataDurationMs(message);
   if (metadataDuration != null) return metadataDuration;
 
-  const matchingRun = editRuns.find((run) => run.assistantMessageId === message.id);
   if (matchingRun?.durationMs != null) return matchingRun.durationMs;
 
   if (!previousUserMessage) return null;
