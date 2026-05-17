@@ -1,0 +1,61 @@
+package app.tripplanner.trip
+
+import org.springframework.jdbc.core.simple.JdbcClient
+
+internal fun JdbcClient.StatementSpec.bindRequest(request: UpsertItineraryItemRequest): JdbcClient.StatementSpec =
+    param("title", request.title.trim())
+        .param("type", request.type?.trim().takeUnless { it.isNullOrEmpty() } ?: "custom")
+        .param("category", request.category?.trim().takeUnless { it.isNullOrEmpty() })
+        .param("timeText", request.timeText?.trim().takeUnless { it.isNullOrEmpty() })
+        .param("durationMinutes", request.durationMinutes)
+        .param("memo", request.memo?.trim().takeUnless { it.isNullOrEmpty() })
+        .param("lat", request.lat)
+        .param("lng", request.lng)
+
+internal fun JdbcClient.StatementSpec.bindRequest(request: UpsertPlaceRequest): JdbcClient.StatementSpec =
+    param("name", request.name.trim())
+        .param("category", request.category?.trim().takeUnless { it.isNullOrEmpty() })
+        .param("note", request.note?.trim().takeUnless { it.isNullOrEmpty() })
+        .param("address", request.address?.trim().takeUnless { it.isNullOrEmpty() })
+        .param("source", request.source?.trim().takeUnless { it.isNullOrEmpty() })
+        .param("sourceUrl", request.sourceUrl?.trim().takeUnless { it.isNullOrEmpty() })
+        .param("imageUrl", request.imageUrl?.trim().takeUnless { it.isNullOrEmpty() })
+        .param("lat", request.lat)
+        .param("lng", request.lng)
+
+internal fun JdbcClient.StatementSpec.bindItem(item: ItineraryItemDto): JdbcClient.StatementSpec =
+    param("id", item.id)
+        .param("tripDayId", item.tripDayId)
+        .param("placeId", item.placeId)
+        .param("type", item.type)
+        .param("title", item.title)
+        .param("category", item.category)
+        .param("timeText", item.timeText)
+        .param("durationMinutes", item.durationMinutes)
+        .param("memo", item.memo)
+        .param("lat", item.lat)
+        .param("lng", item.lng)
+        .param("sortOrder", item.sortOrder)
+        .param("locked", item.locked)
+        .param("rawJson", item.rawJson)
+        .param("createdAt", item.createdAt)
+        .param("updatedAt", item.updatedAt)
+
+internal fun JdbcClient.StatementSpec.bindPlace(place: PlaceDto): JdbcClient.StatementSpec =
+    param("id", place.id)
+        .param("tripId", place.tripId)
+        .param("name", place.name)
+        .param("category", place.category)
+        .param("rating", place.rating)
+        .param("reviews", place.reviews)
+        .param("note", place.note)
+        .param("address", place.address)
+        .param("source", place.source)
+        .param("sourceUrl", place.sourceUrl)
+        .param("imageUrl", place.imageUrl)
+        .param("lat", place.lat)
+        .param("lng", place.lng)
+        .param("status", place.status)
+        .param("rawJson", place.rawJson)
+        .param("createdAt", place.createdAt)
+        .param("updatedAt", place.updatedAt)

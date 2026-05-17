@@ -15,15 +15,27 @@ All JSON responses use UTF-8. Errors use:
 
 ### GET /workspaces
 
-Returns available workspaces.
+Returns available workspaces. `owner` is currently always `wukong`; it is present to support a future account system.
 
 ### POST /workspaces
 
 ```json
 {
-  "name": "개인 여행"
+  "name": "개인 여행",
+  "aiProvider": "codex-app-server",
+  "aiModel": "gpt-5.4-mini",
+  "aiEffort": "medium",
+  "openAiBaseUrl": "https://api.openai.com/v1/chat/completions",
+  "openAiApiKey": "secret value, write only",
+  "openRouterApiKey": "secret value, write only",
+  "openRouterReferer": "http://localhost:5173",
+  "openRouterTitle": "Trip Planner"
 }
 ```
+
+### PATCH /workspaces/{workspaceId}
+
+Updates workspace display name and AI settings. Blank secret fields preserve existing server-side secrets; secret values are never serialized in responses.
 
 ## Trips
 
@@ -37,11 +49,21 @@ Returns trip list.
 {
   "title": "오키나와 여행",
   "destinationName": "Okinawa",
+  "destinationLat": 26.2124,
+  "destinationLng": 127.6809,
   "startDate": "2026-05-05",
   "endDate": "2026-05-08",
   "timezone": "Asia/Tokyo"
 }
 ```
+
+### PATCH /trips/{tripId}
+
+Updates trip metadata. Date shrink requests fail if they would orphan existing itinerary items.
+
+### DELETE /trips/{tripId}
+
+Deletes a trip and its child records.
 
 ### GET /trips/{tripId}/state
 
@@ -122,11 +144,12 @@ Returns session detail and messages.
 
 ### POST /chat-sessions/{sessionId}/messages
 
-Creates a user message and starts AI processing.
+Creates a user message and starts AI processing asynchronously. The response returns the accepted run id and the persisted user message; progress and final state arrive over SSE.
 
 ```json
 {
-  "content": "Day 2 동선을 북부 중심으로 정리해줘"
+  "content": "Day 2 동선을 북부 중심으로 정리해줘",
+  "attachmentIds": ["att_123"]
 }
 ```
 
@@ -134,13 +157,47 @@ Response:
 
 ```json
 {
-  "userMessage": {"id": "msg_user_123", "role": "user"},
-  "assistantMessage": {"id": "msg_assistant_123", "role": "assistant"},
-  "tripState": {"trip": {"id": "trip_123"}},
-  "checkpoint": {"id": "checkpoint_123"},
-  "editRun": {"id": "run_123", "status": "applied", "operationCount": 1}
+  "runId": "run_123",
+  "userMessage": {"id": "msg_user_123", "role": "user", "attachments": []}
 }
 ```
+
+### PATCH /chat-sessions/{sessionId}
+
+Updates the chat session title.
+
+### DELETE /chat-sessions/{sessionId}
+
+Deletes the chat session.
+
+### POST /chat-sessions/{sessionId}/attachments
+
+Multipart upload endpoint for chat attachments. The form field name is `file`.
+
+Response:
+
+```json
+{
+  "id": "att_123",
+  "chatSessionId": "session_123",
+  "chatMessageId": null,
+  "fileName": "plan.pdf",
+  "contentType": "application/pdf",
+  "byteSize": 12345,
+  "kind": "file",
+  "downloadUrl": "/api/chat-sessions/session_123/attachments/att_123/content",
+  "textPreview": null,
+  "createdAt": "2026-05-17T09:00:00Z"
+}
+```
+
+### DELETE /chat-sessions/{sessionId}/attachments/{attachmentId}
+
+Deletes an unsent attachment for the session.
+
+### GET /chat-sessions/{sessionId}/attachments/{attachmentId}/content
+
+Downloads the attachment bytes scoped to the chat session. Safe image MIME types are served inline; all other content is downloaded as `application/octet-stream` with `X-Content-Type-Options: nosniff`.
 
 ### POST /chat-sessions/{sessionId}/runs/current/cancel
 
@@ -179,6 +236,9 @@ data: {"runId":"run_123","operationCount":2}
 
 event: run.applied
 data: {"id":"run_123","checkpointId":"checkpoint_123","operationCount":2}
+
+event: run.activity
+data: {"runId":"run_123","kind":"tool","label":"Searching","detail":null}
 
 event: run.cancelled
 data: {"runId":"run_123","status":"cancelled"}

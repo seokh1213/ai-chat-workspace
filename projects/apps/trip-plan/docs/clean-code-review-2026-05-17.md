@@ -19,6 +19,28 @@
 - Updated the workspace settings form so blank secret fields preserve existing
   server-side keys instead of clearing them.
 - Added serialization tests for workspace and chat session secret redaction.
+- Moved `TripPlannerApplicationTests` from SQLite to PostgreSQL Testcontainers
+  so Flyway migration checks use the same database dialect as deployment.
+- Added the `workspaces.owner` migration with default `wukong`, scoped
+  workspace repository writes/reads to that owner, and added target-trip
+  validation for AI item/place operations.
+- Scoped attachment downloads by `sessionId`, forced unsafe attachment MIME
+  types to download with `nosniff`, and redacted upstream/provider error text.
+- Moved provider streaming and model attachment input assembly from
+  `ChatRunService` into `ChatProviderRunner`.
+- Moved chat run result persistence into `ChatRunResultWriter`.
+- Moved AI trip operation application into `TripOperationApplier`, trip day
+  date synchronization into `TripDayPlanner`, and rollback restore into
+  `TripStateRestorer`.
+- Split trip item/place persistence from `TripRepository` into
+  `TripItemRepository` and `TripPlaceRepository`; moved row/binding helpers into
+  focused files.
+- Split broad integration tests into shared support, app workflow tests, and AI
+  operation tests.
+- Narrowed `dev-stop.sh` so it stops project-managed dev processes instead of
+  killing every listener on the default ports.
+- Updated README, API contract, and infra docs for PostgreSQL, async chat runs,
+  current image tags, and the `dev` namespace.
 
 ## Frontend Priority
 
@@ -36,31 +58,28 @@
 
 ## Backend Priority
 
-1. `ChatRunService.kt` is the largest risk: run lifecycle, provider streaming,
-   SSE publishing, attachments, cancellation, and persistence are in one
-   service. Extract around current private function boundaries with tests for
-   success, failure, and cancellation.
-2. `TripService.kt` applies AI operations through `Map<String, Any?>`.
-   Introduce typed commands or a validated parser before deeper service splits.
-3. `TripRepository.kt` and `ChatRepository.kt` exceed file limits. Split by
-   aggregate/table responsibility and move mappers into focused files.
-4. `recordCheckpoint` and `chatEditRun` have long parameter lists. Replace with
+1. `TripOperation` is still accepted as `Map<String, Any?>` at the API boundary.
+   The application logic is isolated in `TripOperationApplier`; next step is a
+   typed command parser without changing the external JSON contract.
+2. `recordCheckpoint` and `chatEditRun` have long parameter lists. Replace with
    parameter objects.
 
 ## Contract And Docs Priority
 
 1. Kotlin DTOs and TypeScript API types are manually duplicated. Move toward
    OpenAPI or another generated contract source.
-2. `REBUILD_API.md` has stale chat send response documentation.
-3. README and infra docs have drifted from the current PostgreSQL and image tag
-   defaults.
+2. Continue moving API docs toward generated OpenAPI or another contract source
+   so DTO and TypeScript drift is mechanically detected.
 
 ## Verification Notes
 
 - Frontend `npm run build`: passed.
 - `git diff --check`: passed.
-- Docker backend targeted test:
-  `./gradlew :backend:test --tests app.tripplanner.workspace.WorkspaceSerializationTests`: passed in a container copy.
-- Full backend test suite in a container copy compiles, then fails in existing
-  `TripPlannerApplicationTests` SQLite/Flyway setup before this change's
-  assertions. Treat that as a separate test harness cleanup item.
+- Docker backend full test:
+  `./gradlew :backend:test --no-daemon --project-cache-dir /tmp/gradle-project-cache`
+  passed against a disposable PostgreSQL container.
+- Modified source/test files are under 400 lines after the repository, service,
+  chat run, and integration-test splits.
+- Docker app image build:
+  `docker buildx build --platform linux/amd64 --load -t trip-plan/app:local .`
+  passed after the backend split.

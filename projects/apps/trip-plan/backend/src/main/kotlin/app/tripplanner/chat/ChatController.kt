@@ -76,9 +76,11 @@ class ChatController(
         service.deleteAttachment(sessionId = sessionId, attachmentId = attachmentId)
     }
 
-    @GetMapping("/api/chat-attachments/{attachmentId}/content")
-    fun attachmentContent(@PathVariable attachmentId: String): ResponseEntity<ByteArray> =
-        service.attachmentContent(attachmentId)
+    @GetMapping("/api/chat-sessions/{sessionId}/attachments/{attachmentId}/content")
+    fun attachmentContent(
+        @PathVariable sessionId: String,
+        @PathVariable attachmentId: String,
+    ): ResponseEntity<ByteArray> = service.attachmentContent(sessionId = sessionId, attachmentId = attachmentId)
 
     @PostMapping("/api/chat-sessions/{sessionId}/messages")
     @ResponseStatus(HttpStatus.ACCEPTED)

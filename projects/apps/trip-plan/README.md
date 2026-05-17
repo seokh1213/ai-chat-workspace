@@ -9,7 +9,7 @@ legacy Node prototype은 `projects/apps/trip-plan/legacy-node/`에 보관했습�
 범용 AI 여행 플래너로 재구현하기 위한 문서:
 
 - `projects/apps/trip-plan/docs/REBUILD_ARCHITECTURE.md`: Kotlin/Spring + React 전체 아키텍처
-- `projects/apps/trip-plan/docs/REBUILD_DB_SCHEMA.md`: SQLite/Flyway 목표 스키마
+- `projects/apps/trip-plan/docs/REBUILD_DB_SCHEMA.md`: PostgreSQL/Flyway 목표 스키마
 - `projects/apps/trip-plan/docs/REBUILD_SEED_DATA.md`: 별도 SQL 기반 초기 데이터 방침
 - `projects/apps/trip-plan/docs/REBUILD_API.md`: REST/SSE API 계약
 - `projects/apps/trip-plan/docs/REBUILD_AI_OPERATIONS.md`: AI 편집 operation 계약
@@ -30,7 +30,7 @@ legacy Node prototype은 `projects/apps/trip-plan/legacy-node/`에 보관했습�
 - Kotlin 2.3.20
 - Spring Boot 4.0.5
 - JDK 21
-- SQLite + Flyway
+- PostgreSQL + Flyway
 - React 19 + Vite + Tailwind CSS 4
 - AI provider는 Kotlin coroutine `Flow` 기반 스트리밍 추상화로 설계
 - 세션 UI는 단일 `AI`만 노출하고, 기본 AI 경로는 Codex app-server를 직접 호출함
@@ -92,7 +92,7 @@ AI_PROVIDER=codex npm start
 
 Spring Boot backend는 `projects/apps/trip-plan/backend` project입니다.
 
-기본 SQLite 파일은 앱의 `.data/` 아래 backend용 파일로 생성됩니다.
+Backend 기본 DB는 PostgreSQL입니다. `:backend:test`는 PostgreSQL Testcontainers로 운영 migration을 그대로 검증하므로 Docker가 필요합니다.
 
 ```bash
 cd projects/apps/trip-plan
@@ -143,3 +143,23 @@ npm install
 npm run build
 npm run dev
 ```
+
+## Docker-Only Verification
+
+로컬 Java/Node toolchain 대신 Docker만으로 검증할 때는 repo root가 아니라 app root에서 실행합니다.
+
+```bash
+cd projects/apps/trip-plan
+
+docker run --rm \
+  -v "$PWD:/workspace" \
+  -v trip-plan-gradle-cache:/home/gradle/.gradle \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  -w /workspace \
+  gradle:9.2.1-jdk21-alpine \
+  ./gradlew :backend:test --no-daemon
+
+docker buildx build --platform linux/amd64 --load -t trip-plan/app:local .
+```
+
+`TripPlannerApplicationTests` uses a PostgreSQL Testcontainer. If the Docker-in-Docker test command cannot reach the host Docker socket, run the same Gradle test on the host with Docker available.

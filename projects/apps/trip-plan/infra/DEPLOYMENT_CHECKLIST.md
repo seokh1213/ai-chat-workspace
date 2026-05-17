@@ -21,38 +21,38 @@ kubectl get ingressclass tailscale
 - [ ] Build the app image:
 
 ```bash
-docker buildx build --platform linux/amd64 -t registry.wukong.monster/dev/trip-plan/app:0.1.0 --push .
+docker buildx build --platform linux/amd64 -t registry.wukong.monster/dev/trip-plan/app:0.3.2 --push .
 ```
 
 - [ ] Push the app image:
 
 ```bash
-docker buildx imagetools inspect registry.wukong.monster/dev/trip-plan/app:0.1.0
+docker buildx imagetools inspect registry.wukong.monster/dev/trip-plan/app:0.3.2
 ```
 
-- [ ] Build or prepare a Codex app-server image at:
+- [ ] Build or prepare a Codex app-server image only if `Dockerfile.codex`, Codex runtime, or Codex container dependencies changed:
 
 ```bash
-docker buildx build --platform linux/amd64 -f Dockerfile.codex -t registry.wukong.monster/dev/trip-plan/codex-app-server:0.1.0 --push .
+docker buildx build --platform linux/amd64 -f Dockerfile.codex -t registry.wukong.monster/dev/trip-plan/codex-app-server:0.3.0 --push .
 ```
 
 - [ ] Confirm the Codex image includes CA certificates. Device auth can fail without them.
 
 ```bash
-docker run --rm registry.wukong.monster/dev/trip-plan/codex-app-server:0.1.0 \
+docker run --rm registry.wukong.monster/dev/trip-plan/codex-app-server:0.3.0 \
   ls -l /etc/ssl/certs/ca-certificates.crt
 ```
 
 - [ ] Push the Codex app-server image:
 
 ```bash
-docker buildx imagetools inspect registry.wukong.monster/dev/trip-plan/codex-app-server:0.1.0
+docker buildx imagetools inspect registry.wukong.monster/dev/trip-plan/codex-app-server:0.3.0
 ```
 
 - [ ] Confirm the Codex image can run:
 
 ```bash
-docker run --rm -p 127.0.0.1:8765:8765 registry.wukong.monster/dev/trip-plan/codex-app-server:0.1.0
+docker run --rm -p 127.0.0.1:8765:8765 registry.wukong.monster/dev/trip-plan/codex-app-server:0.3.0
 curl -fsS http://127.0.0.1:8765/healthz
 ```
 
@@ -64,7 +64,7 @@ docker run --rm -d \
   --name trip-plan-codex \
   -p 127.0.0.1:8765:8765 \
   -v "$HOME/ai-chat/.codex:/ai-chat/.codex" \
-  registry.wukong.monster/dev/trip-plan/codex-app-server:0.1.0
+  registry.wukong.monster/dev/trip-plan/codex-app-server:0.3.0
 docker exec -it trip-plan-codex codex login
 docker restart trip-plan-codex
 docker exec -it trip-plan-codex codex login status
@@ -83,13 +83,13 @@ docker exec -it trip-plan-codex codex login status
 - [ ] Confirm workloads are created:
 
 ```bash
-kubectl get pods,svc,pvc,ingress -n trip-plan
+kubectl get pods,svc,pvc,ingress -n dev
 ```
 
 - [ ] Confirm no NodePort or LoadBalancer service was created:
 
 ```bash
-kubectl get svc -n trip-plan
+kubectl get svc -n dev
 ```
 
 ## 5. Authenticate Codex
@@ -98,20 +98,20 @@ kubectl get svc -n trip-plan
 - [ ] Run manual login inside the Pod:
 
 ```bash
-kubectl exec -it -n trip-plan deploy/trip-plan-codex -- codex login
+kubectl exec -it -n dev deploy/trip-plan-codex -- codex login
 ```
 
 - [ ] Restart the Codex Deployment so app-server reloads the newly created auth file:
 
 ```bash
-kubectl rollout restart -n trip-plan deploy/trip-plan-codex
-kubectl rollout status -n trip-plan deploy/trip-plan-codex
+kubectl rollout restart -n dev deploy/trip-plan-codex
+kubectl rollout status -n dev deploy/trip-plan-codex
 ```
 
 - [ ] Confirm the login persists through the `trip-plan-codex-home` PVC:
 
 ```bash
-kubectl exec -it -n trip-plan deploy/trip-plan-codex -- codex login status
+kubectl exec -it -n dev deploy/trip-plan-codex -- codex login status
 ```
 
 - [ ] Send one short chat message through the UI. `/healthz` does not validate upstream OpenAI authentication.
@@ -121,7 +121,7 @@ kubectl exec -it -n trip-plan deploy/trip-plan-codex -- codex login status
 - [ ] Confirm the Tailscale Ingress reports a tailnet hostname:
 
 ```bash
-kubectl get ingress -n trip-plan trip-plan
+kubectl get ingress -n dev trip-plan
 ```
 
 - [ ] Open the expected URL from a tailnet device:

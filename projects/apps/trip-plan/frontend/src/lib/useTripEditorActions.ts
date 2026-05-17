@@ -1,4 +1,4 @@
-import { type Dispatch, type FormEvent, type SetStateAction, useState } from "react";
+import { startTransition, type Dispatch, type FormEvent, type SetStateAction, useState } from "react";
 
 import {
   addItineraryItem,
@@ -57,8 +57,10 @@ export function useTripEditorActions({
   const [isMetaSaving, setIsMetaSaving] = useState(false);
 
   function selectDay(dayId: string) {
-    setSelectedDayId(dayId);
     setFocusedItemId(null);
+    startTransition(() => {
+      setSelectedDayId(dayId);
+    });
   }
 
   function cancelEditItem() {
@@ -123,28 +125,38 @@ export function useTripEditorActions({
     }
   }
 
-  async function submitItem(event: FormEvent) {
+  async function submitItem(event: FormEvent): Promise<boolean> {
     event.preventDefault();
-    if (!selectedDay || !itemForm.title?.trim()) return;
+    if (!selectedDay || !itemForm.title?.trim()) return false;
 
-    if (editingItemId) {
-      await updateItineraryItem(editingItemId, itemForm);
-      setEditingItemId(null);
-      setFocusedItemId(editingItemId);
-    } else {
-      const item = await addItineraryItem(selectedDay.id, itemForm);
-      setFocusedItemId(item.id);
+    try {
+      if (editingItemId) {
+        await updateItineraryItem(editingItemId, itemForm);
+        setEditingItemId(null);
+        setFocusedItemId(editingItemId);
+      } else {
+        const item = await addItineraryItem(selectedDay.id, itemForm);
+        setFocusedItemId(item.id);
+      }
+      setItemForm(emptyItemForm);
+      await refreshTripState();
+      return true;
+    } catch (nextError) {
+      window.alert(readError(nextError));
+      return false;
     }
-    setItemForm(emptyItemForm);
-    await refreshTripState();
   }
 
   async function removeItem(itemId: string) {
-    await deleteItineraryItem(itemId);
-    if (focusedItemId === itemId) {
-      setFocusedItemId(null);
+    try {
+      await deleteItineraryItem(itemId);
+      if (focusedItemId === itemId) {
+        setFocusedItemId(null);
+      }
+      await refreshTripState();
+    } catch (nextError) {
+      window.alert(readError(nextError));
     }
-    await refreshTripState();
   }
 
   function startEditItem(item: ItineraryItem) {
@@ -182,30 +194,40 @@ export function useTripEditorActions({
     setPlacesCollapsed(false);
   }
 
-  async function submitPlace(event: FormEvent) {
+  async function submitPlace(event: FormEvent): Promise<boolean> {
     event.preventDefault();
-    if (!activeTrip || !placeForm.name.trim()) return;
+    if (!activeTrip || !placeForm.name.trim()) return false;
 
-    if (editingPlaceId) {
-      await updatePlace(editingPlaceId, placeForm);
-    } else {
-      await addPlace(activeTrip.id, placeForm);
+    try {
+      if (editingPlaceId) {
+        await updatePlace(editingPlaceId, placeForm);
+      } else {
+        await addPlace(activeTrip.id, placeForm);
+      }
+      setEditingPlaceId(null);
+      setPlaceForm(emptyPlaceForm);
+      await refreshTripState();
+      return true;
+    } catch (nextError) {
+      window.alert(readError(nextError));
+      return false;
     }
-    setEditingPlaceId(null);
-    setPlaceForm(emptyPlaceForm);
-    await refreshTripState();
   }
 
   async function removePlace(place: Place) {
     const confirmed = window.confirm(`조사 장소 "${localizedPlaceName(place)}"을 삭제할까요? 이미 일정에 사용된 노드는 유지되고 장소 연결만 해제됩니다.`);
     if (!confirmed) return;
 
-    await deletePlace(place.id);
-    if (editingPlaceId === place.id) {
-      setEditingPlaceId(null);
-      setPlaceForm(emptyPlaceForm);
+    try {
+      await deletePlace(place.id);
+      if (editingPlaceId === place.id) {
+        setEditingPlaceId(null);
+        setPlaceForm(emptyPlaceForm);
+      }
+      await refreshTripState();
+    } catch (nextError) {
+      window.alert(readError(nextError));
     }
-    await refreshTripState();
   }
 
   return {

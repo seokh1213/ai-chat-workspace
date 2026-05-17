@@ -1,5 +1,6 @@
 package app.tripplanner.ai
 
+import app.tripplanner.common.redactExternalErrorMessage
 import app.tripplanner.trip.TripOperations
 import app.tripplanner.trip.readTripOperations
 import com.fasterxml.jackson.databind.JsonNode
@@ -114,7 +115,9 @@ private class OpenAiStyleChatClient(
             HttpResponse.BodyHandlers.ofInputStream(),
         )
         require(response.statusCode() in 200..299) {
-            "$providerId stream failed: ${response.statusCode()} ${responseBodyText(response).take(500)}"
+            redactExternalErrorMessage(
+                "$providerId stream failed: ${response.statusCode()} ${responseBodyText(response)}",
+            )
         }
 
         val state = OpenAiStyleStreamState()

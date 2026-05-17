@@ -30,11 +30,19 @@ cd "${ROOT_DIR}"
 mkdir -p "${LOG_DIR}"
 PIDS=()
 
+write_pid_file() {
+  local label="$1"
+  local pid="$2"
+
+  printf '%s\n' "${pid}" >"${LOG_DIR}/${label}.pid"
+}
+
 cleanup() {
   if [[ "${#PIDS[@]}" -gt 0 ]]; then
     printf '\nstopping dev server pid(s) %s\n' "${PIDS[*]}"
     kill "${PIDS[@]}" 2>/dev/null || true
   fi
+  rm -f "${LOG_DIR}/backend.pid" "${LOG_DIR}/frontend.pid"
 }
 
 trap cleanup INT TERM
@@ -45,6 +53,7 @@ else
   printf 'backend: starting\n'
   ./gradlew :backend:bootRun --args='--spring.profiles.active=dev' >"${LOG_DIR}/backend.log" 2>&1 &
   PIDS+=("$!")
+  write_pid_file "backend" "$!"
   wait_for_port 8081 "backend"
 fi
 
@@ -57,6 +66,7 @@ else
     npm run dev -- --host 127.0.0.1 >"${LOG_DIR}/frontend.log" 2>&1
   ) &
   PIDS+=("$!")
+  write_pid_file "frontend" "$!"
   wait_for_port 5173 "frontend"
 fi
 

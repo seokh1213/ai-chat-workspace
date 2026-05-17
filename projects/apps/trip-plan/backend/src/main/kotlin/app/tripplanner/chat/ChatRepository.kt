@@ -2,7 +2,6 @@ package app.tripplanner.chat
 
 import org.springframework.jdbc.core.simple.JdbcClient
 import org.springframework.stereotype.Repository
-import java.sql.ResultSet
 
 @Repository
 class ChatRepository(
@@ -192,9 +191,10 @@ class ChatRepository(
             .update()
     }
 
-    fun findAttachment(attachmentId: String): ChatAttachmentDto? =
+    fun findAttachment(sessionId: String, attachmentId: String): ChatAttachmentDto? =
         jdbcClient
-            .sql(AttachmentSelectSql + " WHERE id = :attachmentId")
+            .sql(AttachmentSelectSql + " WHERE chat_session_id = :sessionId AND id = :attachmentId")
+            .param("sessionId", sessionId)
             .param("attachmentId", attachmentId)
             .query(::attachmentRow)
             .optional()
@@ -203,6 +203,23 @@ class ChatRepository(
     fun findAttachmentBlob(attachmentId: String): ByteArray? =
         jdbcClient
             .sql("SELECT content FROM chat_files.chat_attachment_blobs WHERE attachment_id = :attachmentId")
+            .param("attachmentId", attachmentId)
+            .query { rs, _ -> rs.getBytes("content") }
+            .optional()
+            .orElse(null)
+
+    fun findAttachmentBlob(sessionId: String, attachmentId: String): ByteArray? =
+        jdbcClient
+            .sql(
+                """
+                SELECT b.content
+                FROM chat_files.chat_attachment_blobs b
+                INNER JOIN chat_files.chat_attachments a ON a.id = b.attachment_id
+                WHERE a.chat_session_id = :sessionId
+                  AND b.attachment_id = :attachmentId
+                """.trimIndent(),
+            )
+            .param("sessionId", sessionId)
             .param("attachmentId", attachmentId)
             .query { rs, _ -> rs.getBytes("content") }
             .optional()
@@ -306,63 +323,6 @@ class ChatRepository(
             .query(::aiEditRunRow)
             .list()
 
-    private fun sessionRow(rs: ResultSet, rowNumber: Int): ChatSessionDto =
-        ChatSessionDto(
-            id = rs.getString("id"),
-            tripId = rs.getString("trip_id"),
-            title = rs.getString("title"),
-            provider = rs.getString("provider"),
-            model = rs.getString("model"),
-            status = rs.getString("status"),
-            settingsJson = rs.getString("settings_json"),
-            createdAt = rs.getString("created_at"),
-            updatedAt = rs.getString("updated_at"),
-        )
-
-    private fun messageRow(rs: ResultSet, rowNumber: Int): ChatMessageDto =
-        ChatMessageDto(
-            id = rs.getString("id"),
-            chatSessionId = rs.getString("chat_session_id"),
-            role = rs.getString("role"),
-            content = rs.getString("content"),
-            status = rs.getString("status"),
-            metadataJson = rs.getString("metadata_json"),
-            createdAt = rs.getString("created_at"),
-        )
-
-    private fun attachmentRow(rs: ResultSet, rowNumber: Int): ChatAttachmentDto =
-        ChatAttachmentDto(
-            id = rs.getString("id"),
-            chatSessionId = rs.getString("chat_session_id"),
-            chatMessageId = rs.getString("chat_message_id"),
-            fileName = rs.getString("original_filename"),
-            contentType = rs.getString("content_type"),
-            byteSize = rs.getLong("byte_size"),
-            kind = rs.getString("kind"),
-            downloadUrl = "/api/chat-attachments/${rs.getString("id")}/content",
-            textPreview = rs.getString("text_preview"),
-            createdAt = rs.getString("created_at"),
-        )
-
-    private fun aiEditRunRow(rs: ResultSet, rowNumber: Int): AiEditRunDto =
-        AiEditRunDto(
-            id = rs.getString("id"),
-            tripId = rs.getString("trip_id"),
-            chatSessionId = rs.getString("chat_session_id"),
-            providerSessionId = rs.getString("provider_session_id"),
-            provider = rs.getString("provider"),
-            model = rs.getString("model"),
-            providerRunId = rs.getString("provider_run_id"),
-            userMessageId = rs.getString("user_message_id"),
-            assistantMessageId = rs.getString("assistant_message_id"),
-            operationsJson = rs.getString("operations_json"),
-            status = rs.getString("status"),
-            error = rs.getString("error"),
-            checkpointId = rs.getString("checkpoint_id"),
-            durationMs = rs.getNullableLong("duration_ms"),
-            createdAt = rs.getString("created_at"),
-        )
-
     private fun withAttachments(messages: List<ChatMessageDto>): List<ChatMessageDto> {
         if (messages.isEmpty()) return messages
         val messageIds = messages.map(ChatMessageDto::id)
@@ -385,12 +345,6 @@ class ChatRepository(
     }
 }
 
-private const val AttachmentSelectSql = """
-SELECT id, chat_session_id, chat_message_id, original_filename, content_type, byte_size,
-       kind, text_preview, created_at
-FROM chat_files.chat_attachments
-"""
-
 private fun JdbcClient.StatementSpec.bindSession(session: ChatSessionDto): JdbcClient.StatementSpec =
     param("id", session.id)
         .param("tripId", session.tripId)
@@ -401,8 +355,3 @@ private fun JdbcClient.StatementSpec.bindSession(session: ChatSessionDto): JdbcC
         .param("settingsJson", session.settingsJson)
         .param("createdAt", session.createdAt)
         .param("updatedAt", session.updatedAt)
-
-private fun ResultSet.getNullableLong(column: String): Long? {
-    val value = getLong(column)
-    return if (wasNull()) null else value
-}

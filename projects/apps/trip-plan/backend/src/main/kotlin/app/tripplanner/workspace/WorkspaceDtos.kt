@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore
 
 data class WorkspaceDto(
     val id: String,
+    val owner: String,
     val name: String,
     val aiProvider: String,
     val aiModel: String,

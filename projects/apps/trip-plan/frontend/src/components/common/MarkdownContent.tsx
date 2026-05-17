@@ -1,16 +1,17 @@
+import { memo } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkBreaks from "remark-breaks";
 import remarkGfm from "remark-gfm";
 
 const markdownPlugins = [remarkGfm, remarkBreaks, remarkLenientStrong];
 
-export function MarkdownContent(props: { content: string; className?: string }) {
+export const MarkdownContent = memo(function MarkdownContent(props: { content: string; className?: string }) {
   return (
     <div className={["message-content", props.className].filter(Boolean).join(" ")}>
       <ReactMarkdown remarkPlugins={markdownPlugins}>{normalizeMarkdownForRender(props.content)}</ReactMarkdown>
     </div>
   );
-}
+});
 
 function normalizeMarkdownForRender(content: string) {
   return content

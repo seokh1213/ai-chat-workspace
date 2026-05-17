@@ -113,7 +113,7 @@ class ChatService(
 
         val content = file.bytes
         val now = clockProvider.nowText()
-        val contentType = file.contentType?.takeIf(String::isNotBlank) ?: MediaType.APPLICATION_OCTET_STREAM_VALUE
+        val contentType = normalizedContentType(file.contentType)
         val fileName = sanitizeFileName(file.originalFilename)
         val attachment = ChatAttachmentDto(
             id = "att_${UUID.randomUUID()}",
@@ -122,7 +122,7 @@ class ChatService(
             fileName = fileName,
             contentType = contentType,
             byteSize = content.size.toLong(),
-            kind = if (contentType.startsWith("image/")) "image" else "file",
+            kind = if (isSafeInlineImage(contentType)) "image" else "file",
             downloadUrl = "",
             textPreview = textPreview(fileName = fileName, contentType = contentType, content = content),
             createdAt = now,
@@ -133,22 +133,31 @@ class ChatService(
             checksumSha256 = sha256(content),
             content = content,
         )
-        return attachment.copy(downloadUrl = "/api/chat-attachments/${attachment.id}/content")
+        return attachment.copy(downloadUrl = "/api/chat-sessions/$sessionId/attachments/${attachment.id}/content")
     }
 
     @Transactional(readOnly = true)
-    fun attachmentContent(attachmentId: String): ResponseEntity<ByteArray> {
-        val attachment = repository.findAttachment(attachmentId) ?: throw NoSuchElementException("Attachment not found.")
-        val content = repository.findAttachmentBlob(attachmentId) ?: throw NoSuchElementException("Attachment content not found.")
-        val contentType = runCatching { MediaType.parseMediaType(attachment.contentType) }
-            .getOrDefault(MediaType.APPLICATION_OCTET_STREAM)
+    fun attachmentContent(sessionId: String, attachmentId: String): ResponseEntity<ByteArray> {
+        repository.findSession(sessionId) ?: throw NoSuchElementException("Chat session not found.")
+        val attachment = repository.findAttachment(sessionId = sessionId, attachmentId = attachmentId)
+            ?: throw NoSuchElementException("Attachment not found.")
+        val content = repository.findAttachmentBlob(sessionId = sessionId, attachmentId = attachmentId)
+            ?: throw NoSuchElementException("Attachment content not found.")
+        val inline = isSafeInlineImage(attachment.contentType)
+        val responseContentType = if (inline) {
+            parseMediaTypeOrOctetStream(attachment.contentType)
+        } else {
+            MediaType.APPLICATION_OCTET_STREAM
+        }
+        val disposition = if (inline) ContentDisposition.inline() else ContentDisposition.attachment()
 
         return ResponseEntity
             .ok()
-            .contentType(contentType)
+            .contentType(responseContentType)
+            .header("X-Content-Type-Options", "nosniff")
             .header(
                 HttpHeaders.CONTENT_DISPOSITION,
-                ContentDisposition.inline()
+                disposition
                     .filename(attachment.fileName, Charsets.UTF_8)
                     .build()
                     .toString(),
@@ -245,6 +254,7 @@ class ChatService(
 private const val MaxAttachmentBytes = 20L * 1024L * 1024L
 private const val TextPreviewBytes = 128 * 1024
 private const val TextPreviewChars = 12_000
+private val SafeInlineImageTypes = setOf("image/png", "image/jpeg", "image/gif", "image/webp")
 
 private fun sanitizeFileName(value: String?): String {
     val name = value
@@ -259,6 +269,21 @@ private fun sanitizeFileName(value: String?): String {
 
 private fun sha256(content: ByteArray): String =
     HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(content))
+
+private fun normalizedContentType(value: String?): String =
+    value
+        ?.substringBefore(';')
+        ?.trim()
+        ?.lowercase()
+        ?.takeIf { contentType -> contentType.isNotBlank() && contentType.length <= 120 }
+        ?.takeIf { contentType -> contentType.all { char -> char.isLetterOrDigit() || char in setOf('/', '.', '+', '-') } }
+        ?: MediaType.APPLICATION_OCTET_STREAM_VALUE
+
+private fun parseMediaTypeOrOctetStream(value: String): MediaType =
+    runCatching { MediaType.parseMediaType(value) }.getOrDefault(MediaType.APPLICATION_OCTET_STREAM)
+
+private fun isSafeInlineImage(contentType: String): Boolean =
+    normalizedContentType(contentType) in SafeInlineImageTypes
 
 private fun textPreview(fileName: String, contentType: String, content: ByteArray): String? {
     if (content.size > TextPreviewBytes || !isTextLike(fileName, contentType)) return null

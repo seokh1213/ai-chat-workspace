@@ -32,8 +32,10 @@ dependencies {
 
     runtimeOnly("org.postgresql:postgresql")
 
+    testImplementation(platform("org.testcontainers:testcontainers-bom:1.21.3"))
     testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
-    testRuntimeOnly("org.xerial:sqlite-jdbc:3.53.0.0")
+    testImplementation("org.testcontainers:junit-jupiter")
+    testImplementation("org.testcontainers:postgresql")
 }
 
 kotlin {

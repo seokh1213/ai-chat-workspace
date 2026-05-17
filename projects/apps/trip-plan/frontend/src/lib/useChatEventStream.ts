@@ -1,13 +1,10 @@
-import { type Dispatch, type SetStateAction, useEffect, useRef, useState } from "react";
-
+import { type Dispatch, type SetStateAction, useCallback, useEffect, useRef, useState } from "react";
 import { getChatSession, getTripState } from "../api";
 import type { AiEditRunSummary, ChatMessage, ChatRunActivityEvent, ChatSession, TripState } from "../types";
 import { isTerminalChatRunStatus, parseEventTimeMs, parseSseData, sortChatMessages } from "./chat";
 import { useStreamedTextBuffer } from "./useStreamedTextBuffer";
-
 const chatEventSilenceTimeoutMs = 20_000;
 const chatEventReconnectDelayMs = 500;
-
 interface UseChatEventStreamProps {
   activeChatId: string | null;
   tripId: string | null;
@@ -38,14 +35,33 @@ export function useChatEventStream({
   const streamMutedRef = useRef(false);
   const activeRunIdRef = useRef<string | null>(null);
   const isSendingRef = useRef(false);
+  const labelClearTimerRef = useRef<number | null>(null);
   const eventStreamControlRef = useRef<{ poke: () => void; restart: (reason: string) => void } | null>(null);
+  const clearTransientLabelTimer = useCallback(() => {
+    if (labelClearTimerRef.current != null) {
+      window.clearTimeout(labelClearTimerRef.current);
+      labelClearTimerRef.current = null;
+    }
+  }, []);
+
+  const setTransientChatStreamLabel = useCallback((label: string) => {
+    clearTransientLabelTimer();
+    setChatStreamLabel(label);
+    labelClearTimerRef.current = window.setTimeout(() => {
+      labelClearTimerRef.current = null;
+      setChatStreamLabel(null);
+    }, 1200);
+  }, [clearTransientLabelTimer]);
+
+  useEffect(() => {
+    return clearTransientLabelTimer;
+  }, [clearTransientLabelTimer]);
 
   useEffect(() => {
     if (!isChatSending || chatRunStartedAtMs == null) {
       setChatElapsedSeconds(0);
       return;
     }
-
     const tick = () => {
       setChatElapsedSeconds(Math.max(0, Math.floor((Date.now() - chatRunStartedAtMs) / 1000)));
     };
@@ -65,6 +81,7 @@ export function useChatEventStream({
     if (!activeChatId) {
       isSendingRef.current = false;
       setIsChatSending(false);
+      clearTransientLabelTimer();
       setChatStreamLabel(null);
       setChatActivity(null);
       setChatStreamingText("");
@@ -73,7 +90,6 @@ export function useChatEventStream({
       streamText.clear();
       return;
     }
-
     const eventSessionId = activeChatId;
     streamMutedRef.current = false;
     streamText.clear();
@@ -122,7 +138,6 @@ export function useChatEventStream({
         const latestMessage = detail.messages[detail.messages.length - 1] ?? null;
         const activeRunFinished = activeRun ? isTerminalChatRunStatus(activeRun.status) : false;
         const latestMessageFinished = activeRunId != null && latestMessage?.role === "assistant";
-
         if (activeRunFinished || latestMessageFinished) {
           if (activeRun?.status === "applied" && tripId) {
             const nextState = await getTripState(tripId);
@@ -155,11 +170,9 @@ export function useChatEventStream({
         if (!isDisposed) openEventStream();
       }, chatEventReconnectDelayMs);
     }
-
     const settle = (label: string) => {
       if (streamMutedRef.current) return;
-      setChatStreamLabel(label);
-      window.setTimeout(() => setChatStreamLabel(null), 1200);
+      setTransientChatStreamLabel(label);
     };
     const upsertLiveMessage = (message: ChatMessage | null) => {
       if (!message || message.chatSessionId !== eventSessionId) return;
@@ -327,11 +340,11 @@ export function useChatEventStream({
       }
       if (reconnectTimer != null) window.clearTimeout(reconnectTimer);
       clearSilenceTimer();
+      clearTransientLabelTimer();
       source?.close();
       streamText.clear();
     };
-  }, [activeChatId, tripId, setChatSessions, setEditRuns, setMessages, setSelectedDayId, setTripState]);
-
+  }, [activeChatId, clearTransientLabelTimer, setTransientChatStreamLabel, tripId, setChatSessions, setEditRuns, setMessages, setSelectedDayId, setTripState]);
   function clearLocalSendingState(label?: string) {
     activeRunIdRef.current = null;
     isSendingRef.current = false;
@@ -342,11 +355,9 @@ export function useChatEventStream({
     setChatRunStartedAtMs(null);
     streamText.clear();
     if (label) {
-      setChatStreamLabel(label);
-      window.setTimeout(() => setChatStreamLabel(null), 1200);
+      setTransientChatStreamLabel(label);
     }
   }
-
   return {
     isChatSending,
     chatStreamLabel,

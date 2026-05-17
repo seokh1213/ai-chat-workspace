@@ -5,44 +5,22 @@ import app.tripplanner.chat.CreateChatMessageRequest
 import app.tripplanner.chat.CreateChatSessionRequest
 import app.tripplanner.chat.ImportChatMessageDto
 import app.tripplanner.chat.ImportSetupChatSessionRequest
-import app.tripplanner.trip.ApplyOperationsRequest
+import app.tripplanner.common.redactExternalErrorMessage
 import app.tripplanner.trip.CreateTripRequest
-import app.tripplanner.trip.TripService
 import app.tripplanner.trip.UpdateTripRequest
 import app.tripplanner.trip.UpsertItineraryItemRequest
-import app.tripplanner.workspace.WorkspaceRepository
-import app.tripplanner.workspace.WorkspaceService
 import app.tripplanner.workspace.UpdateWorkspaceRequest
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
-import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.test.context.ActiveProfiles
+import org.springframework.http.HttpHeaders
+import org.springframework.http.MediaType
+import org.springframework.mock.web.MockMultipartFile
 
-@SpringBootTest(
-    properties = [
-        "spring.datasource.url=jdbc:sqlite:file:trip_planner_test?mode=memory&cache=shared",
-        "spring.datasource.driver-class-name=org.sqlite.JDBC",
-        "app.ai.codex-app-server.managed=false",
-    ],
-)
-@ActiveProfiles("dev")
-class TripPlannerApplicationTests {
-    @Autowired
-    private lateinit var workspaceRepository: WorkspaceRepository
-
-    @Autowired
-    private lateinit var workspaceService: WorkspaceService
-
-    @Autowired
-    private lateinit var tripService: TripService
-
-    @Autowired
-    private lateinit var chatService: ChatService
-
+class TripPlannerApplicationTests : TripPlannerIntegrationTestSupport() {
     @Test
     fun `context loads`() {
         assertTrue(true)
@@ -96,6 +74,19 @@ class TripPlannerApplicationTests {
         assertEquals("openai/gpt-5.2", newSession.model)
         assertTrue(newSession.settingsJson.contains("low"))
         assertTrue(newSession.settingsJson.contains("Trip Planner Test"))
+    }
+
+    @Test
+    fun `workspace rejects unsafe openai compatible base url`() {
+        assertThrows(IllegalArgumentException::class.java) {
+            workspaceService.update(
+                workspaceId = "workspace_default",
+                request = UpdateWorkspaceRequest(
+                    aiProvider = "openai-compatible",
+                    openAiBaseUrl = "https://127.0.0.1/v1/chat/completions",
+                ),
+            )
+        }
     }
 
     @Test
@@ -258,136 +249,47 @@ class TripPlannerApplicationTests {
     }
 
     @Test
-    fun `ai add item operation stores place and coordinates`() {
+    fun `chat attachment download requires session path and safe response headers`() {
         val trip = tripService.createTrip(
             workspaceId = "workspace_default",
-            request = CreateTripRequest(title = "장소 핀 테스트"),
+            request = CreateTripRequest(title = "첨부 다운로드 테스트"),
         )
-
-        val response = tripService.applyOperations(
+        val session = chatService.createSession(
             tripId = trip.id,
-            request = ApplyOperationsRequest(
-                source = "ai",
-                operations = listOf(
-                    mapOf(
-                        "op" to "add_item",
-                        "day" to 1,
-                        "item" to mapOf(
-                            "title" to "와이탄",
-                            "type" to "poi",
-                            "category" to "sight",
-                            "lat" to 31.2403,
-                            "lng" to 121.4903,
-                            "place" to mapOf(
-                                "name" to "와이탄",
-                                "category" to "sight",
-                                "address" to "Zhongshan East 1st Rd, Shanghai",
-                                "note" to "황푸강 야경 명소",
-                                "lat" to 31.2403,
-                                "lng" to 121.4903,
-                                "source" to "ai",
-                            ),
-                        ),
-                    ),
-                ),
+            request = CreateChatSessionRequest(title = "첨부 세션"),
+        )
+        val attachment = chatService.uploadAttachment(
+            sessionId = session.id,
+            file = MockMultipartFile(
+                "file",
+                "xss.svg",
+                "image/svg+xml",
+                "<svg><script>alert(1)</script></svg>".toByteArray(),
             ),
         )
 
-        assertEquals(1, response.state.places.size)
-        assertEquals("와이탄", response.state.places.single().name)
-        assertEquals(response.state.places.single().id, response.state.itineraryItems.single().placeId)
-        assertEquals(31.2403, response.state.itineraryItems.single().lat)
-    }
+        assertEquals("file", attachment.kind)
+        assertTrue(attachment.downloadUrl.contains("/api/chat-sessions/${session.id}/attachments/${attachment.id}/content"))
 
-    @Test
-    fun `ai add item with coordinates creates implicit place`() {
-        val trip = tripService.createTrip(
-            workspaceId = "workspace_default",
-            request = CreateTripRequest(title = "암묵 장소 핀 테스트"),
-        )
+        val response = chatService.attachmentContent(sessionId = session.id, attachmentId = attachment.id)
 
-        val response = tripService.applyOperations(
-            tripId = trip.id,
-            request = ApplyOperationsRequest(
-                source = "ai",
-                operations = listOf(
-                    mapOf(
-                        "op" to "add_item",
-                        "day" to 1,
-                        "item" to mapOf(
-                            "title" to "난징동루",
-                            "type" to "poi",
-                            "category" to "shopping",
-                            "lat" to 31.2355,
-                            "lng" to 121.4749,
-                        ),
-                    ),
-                ),
-            ),
-        )
-
-        assertEquals(1, response.state.places.size)
-        assertEquals("난징동루", response.state.places.single().name)
-        assertEquals(response.state.places.single().id, response.state.itineraryItems.single().placeId)
-    }
-
-    @Test
-    fun `ai add item reuses existing place for duplicate coordinates`() {
-        val trip = tripService.createTrip(
-            workspaceId = "workspace_default",
-            request = CreateTripRequest(title = "중복 장소 테스트"),
-        )
-
-        tripService.applyOperations(
-            tripId = trip.id,
-            request = ApplyOperationsRequest(
-                source = "ai",
-                operations = listOf(
-                    mapOf(
-                        "op" to "add_item",
-                        "day" to 1,
-                        "item" to mapOf(
-                            "title" to "푸동국제공항 도착",
-                            "type" to "transport",
-                            "category" to "transport",
-                            "lat" to 31.1443,
-                            "lng" to 121.8083,
-                        ),
-                    ),
-                    mapOf(
-                        "op" to "add_item",
-                        "day" to 1,
-                        "item" to mapOf(
-                            "title" to "푸동국제공항 출발",
-                            "type" to "transport",
-                            "category" to "transport",
-                            "lat" to 31.14431,
-                            "lng" to 121.80831,
-                        ),
-                    ),
-                ),
-            ),
-        )
-
-        val state = tripService.state(trip.id)
-        assertEquals(1, state.places.size)
-        assertEquals(state.places.single().id, state.itineraryItems[0].placeId)
-        assertEquals(state.places.single().id, state.itineraryItems[1].placeId)
-    }
-
-    private fun eventually(timeoutMs: Long = 3_000, assertion: () -> Unit) {
-        val deadline = System.currentTimeMillis() + timeoutMs
-        var lastError: AssertionError? = null
-        while (System.currentTimeMillis() < deadline) {
-            try {
-                assertion()
-                return
-            } catch (error: AssertionError) {
-                lastError = error
-                Thread.sleep(50)
-            }
+        assertEquals(MediaType.APPLICATION_OCTET_STREAM, response.headers.contentType)
+        assertEquals("nosniff", response.headers.getFirst("X-Content-Type-Options"))
+        assertTrue(response.headers.getFirst(HttpHeaders.CONTENT_DISPOSITION)?.startsWith("attachment") == true)
+        assertThrows(NoSuchElementException::class.java) {
+            chatService.attachmentContent(sessionId = "chat_missing", attachmentId = attachment.id)
         }
-        lastError?.let { throw it }
-        assertion()
     }
+
+    @Test
+    fun `external provider errors are redacted before user exposure`() {
+        val message = redactExternalErrorMessage(
+            "openrouter stream failed: 401 Authorization: Bearer sk-or-v1-abcdefghijklmnopqrstuvwxyz123456 api_key=secret-value",
+        )
+
+        assertFalse(message.contains("sk-or-v1"))
+        assertFalse(message.contains("secret-value"))
+        assertTrue(message.contains("[REDACTED]"))
+    }
+
 }

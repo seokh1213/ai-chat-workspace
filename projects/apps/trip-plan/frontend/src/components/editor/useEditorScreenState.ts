@@ -6,6 +6,7 @@ import {
   type PointerEvent as ReactPointerEvent,
   type SetStateAction,
   useEffect,
+  useMemo,
   useRef,
   useState
 } from "react";
@@ -50,8 +51,8 @@ interface UseEditorScreenStateProps {
   onCancelEditPlace: () => void;
   onItemFormChange: (form: UpsertItineraryItemRequest) => void;
   onPlaceFormChange: (form: UpsertPlaceRequest) => void;
-  onSubmitItem: (event: FormEvent) => void;
-  onSubmitPlace: (event: FormEvent) => void;
+  onSubmitItem: (event: FormEvent) => boolean | Promise<boolean>;
+  onSubmitPlace: (event: FormEvent) => boolean | Promise<boolean>;
   onFocusItem: (itemId: string | null) => void;
   onLayoutChange: (layout: EditorLayout) => void;
 }
@@ -97,13 +98,19 @@ export interface EditorScreenState {
 }
 
 export function useEditorScreenState(props: UseEditorScreenStateProps): EditorScreenState {
-  const routeNumbers = new Map<string, number>();
-  props.dayItems.filter(hasCoordinates).forEach((item, index) => routeNumbers.set(item.id, index + 1));
-  const visiblePlaces = dedupePlaces(props.tripState.places);
-  const itemCountByDay = new Map<string, number>();
-  props.tripState.itineraryItems.forEach((item) => {
-    itemCountByDay.set(item.tripDayId, (itemCountByDay.get(item.tripDayId) ?? 0) + 1);
-  });
+  const routeNumbers = useMemo(() => {
+    const numbers = new Map<string, number>();
+    props.dayItems.filter(hasCoordinates).forEach((item, index) => numbers.set(item.id, index + 1));
+    return numbers;
+  }, [props.dayItems]);
+  const visiblePlaces = useMemo(() => dedupePlaces(props.tripState.places), [props.tripState.places]);
+  const itemCountByDay = useMemo(() => {
+    const counts = new Map<string, number>();
+    props.tripState.itineraryItems.forEach((item) => {
+      counts.set(item.tripDayId, (counts.get(item.tripDayId) ?? 0) + 1);
+    });
+    return counts;
+  }, [props.tripState.itineraryItems]);
   const [expandedItems, setExpandedItems] = useState<Set<string>>(() => new Set());
   const [expandedPlaces, setExpandedPlaces] = useState<Set<string>>(() => new Set());
   const [isAddingItem, setIsAddingItem] = useState(false);
@@ -317,14 +324,14 @@ export function useEditorScreenState(props: UseEditorScreenStateProps): EditorSc
     },
     submitItemForm: (event) => {
       const canSubmit = Boolean(props.itemForm.title.trim());
-      void Promise.resolve(props.onSubmitItem(event)).then(() => {
-        if (canSubmit) setIsAddingItem(false);
+      void Promise.resolve(props.onSubmitItem(event)).then((submitted) => {
+        if (canSubmit && submitted) setIsAddingItem(false);
       });
     },
     submitPlaceForm: (event) => {
       const canSubmit = Boolean(props.placeForm.name.trim());
-      void Promise.resolve(props.onSubmitPlace(event)).then(() => {
-        if (canSubmit) setIsAddingPlace(false);
+      void Promise.resolve(props.onSubmitPlace(event)).then((submitted) => {
+        if (canSubmit && submitted) setIsAddingPlace(false);
       });
     },
     focusItemOnMap,

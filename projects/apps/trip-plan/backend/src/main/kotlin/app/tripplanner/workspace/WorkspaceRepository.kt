@@ -12,30 +12,33 @@ class WorkspaceRepository(
 ) {
     private val objectMapper: ObjectMapper = jacksonObjectMapper()
 
-    fun findAll(): List<WorkspaceDto> =
+    fun findAll(owner: String = DefaultWorkspaceOwner): List<WorkspaceDto> =
         jdbcClient
             .sql(
                 """
-                SELECT id, name, ai_provider, ai_model, ai_effort, settings_json, created_at, updated_at
+                SELECT id, owner, name, ai_provider, ai_model, ai_effort, settings_json, created_at, updated_at
                 FROM workspaces
+                WHERE owner = :owner
                 ORDER BY created_at ASC
                 """.trimIndent(),
             )
+            .param("owner", owner)
             .query { rs, _ ->
                 rs.toWorkspace()
             }
             .list()
 
-    fun find(workspaceId: String): WorkspaceDto? =
+    fun find(workspaceId: String, owner: String = DefaultWorkspaceOwner): WorkspaceDto? =
         jdbcClient
             .sql(
                 """
-                SELECT id, name, ai_provider, ai_model, ai_effort, settings_json, created_at, updated_at
+                SELECT id, owner, name, ai_provider, ai_model, ai_effort, settings_json, created_at, updated_at
                 FROM workspaces
-                WHERE id = :workspaceId
+                WHERE id = :workspaceId AND owner = :owner
                 """.trimIndent(),
             )
             .param("workspaceId", workspaceId)
+            .param("owner", owner)
             .query { rs, _ -> rs.toWorkspace() }
             .optional()
             .orElse(null)
@@ -45,9 +48,9 @@ class WorkspaceRepository(
             .sql(
                 """
                 INSERT INTO workspaces (
-                  id, name, ai_provider, ai_model, ai_effort, settings_json, created_at, updated_at
+                  id, owner, name, ai_provider, ai_model, ai_effort, settings_json, created_at, updated_at
                 ) VALUES (
-                  :id, :name, :aiProvider, :aiModel, :aiEffort, :settingsJson, :createdAt, :updatedAt
+                  :id, :owner, :name, :aiProvider, :aiModel, :aiEffort, :settingsJson, :createdAt, :updatedAt
                 )
                 """.trimIndent(),
             )
@@ -66,7 +69,7 @@ class WorkspaceRepository(
                     ai_effort = :aiEffort,
                     settings_json = :settingsJson,
                     updated_at = :updatedAt
-                WHERE id = :id
+                WHERE id = :id AND owner = :owner
                 """.trimIndent(),
             )
             .bindWorkspace(workspace)
@@ -127,10 +130,11 @@ class WorkspaceRepository(
             .update()
     }
 
-    fun delete(workspaceId: String) {
+    fun delete(workspaceId: String, owner: String = DefaultWorkspaceOwner) {
         val deleted = jdbcClient
-            .sql("DELETE FROM workspaces WHERE id = :workspaceId")
+            .sql("DELETE FROM workspaces WHERE id = :workspaceId AND owner = :owner")
             .param("workspaceId", workspaceId)
+            .param("owner", owner)
             .update()
 
         if (deleted == 0) {
@@ -143,6 +147,7 @@ class WorkspaceRepository(
         val settings = parseSettings(settingsJson)
         return WorkspaceDto(
             id = getString("id"),
+            owner = getString("owner"),
             name = getString("name"),
             aiProvider = getString("ai_provider"),
             aiModel = getString("ai_model"),
@@ -171,6 +176,7 @@ class WorkspaceRepository(
 
 private fun JdbcClient.StatementSpec.bindWorkspace(workspace: WorkspaceDto): JdbcClient.StatementSpec =
     param("id", workspace.id)
+        .param("owner", workspace.owner)
         .param("name", workspace.name)
         .param("aiProvider", workspace.aiProvider)
         .param("aiModel", workspace.aiModel)
@@ -178,3 +184,5 @@ private fun JdbcClient.StatementSpec.bindWorkspace(workspace: WorkspaceDto): Jdb
         .param("settingsJson", workspace.settingsJson)
         .param("createdAt", workspace.createdAt)
         .param("updatedAt", workspace.updatedAt)
+
+const val DefaultWorkspaceOwner = "wukong"

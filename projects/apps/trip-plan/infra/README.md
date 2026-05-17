@@ -20,16 +20,16 @@ The Tailscale operator setup needs OAuth credentials and tailnet policy tags. Ke
 Build and push these images to the internal registry before syncing:
 
 ```bash
-docker buildx build --platform linux/amd64 -t registry.wukong.monster/dev/trip-plan/app:0.1.0 --push .
+docker buildx build --platform linux/amd64 -t registry.wukong.monster/dev/trip-plan/app:0.3.2 --push .
 ```
 
-Build and push the Codex app-server image:
+Build and push the Codex app-server image only when `Dockerfile.codex`, Codex runtime, or Codex container dependencies changed:
 
 ```bash
-docker buildx build --platform linux/amd64 -f Dockerfile.codex -t registry.wukong.monster/dev/trip-plan/codex-app-server:0.1.0 --push .
+docker buildx build --platform linux/amd64 -f Dockerfile.codex -t registry.wukong.monster/dev/trip-plan/codex-app-server:0.3.0 --push .
 ```
 
-`registry.wukong.monster/dev/trip-plan/codex-app-server:0.1.0` must be able to run:
+`registry.wukong.monster/dev/trip-plan/codex-app-server:0.3.0` must be able to run:
 
 ```bash
 codex app-server --listen ws://0.0.0.0:8765
@@ -62,7 +62,7 @@ docker run --rm -it \
   --name trip-plan-codex \
   -p 127.0.0.1:8765:8765 \
   -v "$HOME/ai-chat/.codex:/ai-chat/.codex" \
-  registry.wukong.monster/dev/trip-plan/codex-app-server:0.1.0
+  registry.wukong.monster/dev/trip-plan/codex-app-server:0.3.0
 ```
 
 If the image was built from `Dockerfile.codex`, it includes `ca-certificates`. Without CA certificates, `codex login` device auth can fail while requesting the OpenAI device code.
@@ -84,10 +84,10 @@ In Kubernetes, Codex uses its own PVC mounted at `/ai-chat/.codex`, separate fro
 After the Codex Pod is running, authenticate once:
 
 ```bash
-kubectl exec -it -n trip-plan deploy/trip-plan-codex -- codex login
-kubectl rollout restart -n trip-plan deploy/trip-plan-codex
-kubectl rollout status -n trip-plan deploy/trip-plan-codex
-kubectl exec -it -n trip-plan deploy/trip-plan-codex -- codex login status
+kubectl exec -it -n dev deploy/trip-plan-codex -- codex login
+kubectl rollout restart -n dev deploy/trip-plan-codex
+kubectl rollout status -n dev deploy/trip-plan-codex
+kubectl exec -it -n dev deploy/trip-plan-codex -- codex login status
 ```
 
 The login state persists on the `trip-plan-codex-home` PVC across Pod restarts. Do not mount the host `.codex` directory unless you explicitly accept host token sharing and node pinning.
@@ -99,7 +99,7 @@ The app-server `/healthz` endpoint only proves that the process is alive. It doe
 Only `trip-plan-app` is exposed to the tailnet through Tailscale Ingress:
 
 ```bash
-kubectl get ingress -n trip-plan trip-plan
+kubectl get ingress -n dev trip-plan
 ```
 
 Expected URL:

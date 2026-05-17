@@ -42,7 +42,7 @@ class ApiExceptionHandler {
             .body(
                 ErrorResponse(
                     error = "upstream_unavailable",
-                    message = error.message ?: "Upstream service is unavailable.",
+                    message = redactExternalErrorMessage(error.message ?: "Upstream service is unavailable."),
                 ),
             )
 
@@ -57,3 +57,22 @@ class ApiExceptionHandler {
                 ),
             )
 }
+
+private val bearerTokenPattern = Regex("(?i)\\bBearer\\s+[A-Za-z0-9._~+/=-]{8,}")
+private val sensitiveFieldPattern = Regex("(?i)\"?(api[_-]?key|token|secret|authorization)\"?\\s*[:=]\\s*\"?[^\"\\s,}]+")
+private val longCredentialPattern = Regex("\\b[A-Za-z0-9._~+/=-]{32,}\\b")
+
+fun redactExternalErrorMessage(message: String): String {
+    val redacted = message
+        .replace(bearerTokenPattern, "Bearer [REDACTED]")
+        .replace(sensitiveFieldPattern) { match ->
+            val field = match.groupValues[1]
+            "$field=[REDACTED]"
+        }
+        .replace(longCredentialPattern, "[REDACTED]")
+        .replace(Regex("[\\r\\n\\t]+"), " ")
+        .trim()
+    return redacted.take(MaxExternalErrorMessageChars).ifBlank { "Upstream service is unavailable." }
+}
+
+private const val MaxExternalErrorMessageChars = 500

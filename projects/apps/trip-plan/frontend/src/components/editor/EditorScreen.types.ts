@@ -75,14 +75,14 @@ export interface EditorScreenProps {
   itemForm: UpsertItineraryItemRequest;
   editingItemId: string | null;
   onItemFormChange: (form: UpsertItineraryItemRequest) => void;
-  onSubmitItem: (event: FormEvent) => void;
+  onSubmitItem: (event: FormEvent) => boolean | Promise<boolean>;
   onEditItem: (item: ItineraryItem) => void;
   onCancelEditItem: () => void;
   onUsePlace: (place: Place) => void;
   placeForm: UpsertPlaceRequest;
   editingPlaceId: string | null;
   onPlaceFormChange: (form: UpsertPlaceRequest) => void;
-  onSubmitPlace: (event: FormEvent) => void;
+  onSubmitPlace: (event: FormEvent) => boolean | Promise<boolean>;
   onEditPlace: (place: Place) => void;
   onCancelEditPlace: () => void;
   onDeletePlace: (place: Place) => void;

@@ -4,6 +4,11 @@ import app.tripplanner.common.ClockProvider
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.net.IDN
+import java.net.Inet4Address
+import java.net.InetAddress
+import java.net.Inet6Address
+import java.net.URI
 import java.util.UUID
 
 @Service
@@ -31,6 +36,7 @@ class WorkspaceService(
         )
         val workspace = WorkspaceDto(
             id = "workspace_${UUID.randomUUID()}",
+            owner = DefaultWorkspaceOwner,
             name = request.name.trim(),
             aiProvider = aiSettings.provider,
             aiModel = aiSettings.model,
@@ -119,11 +125,12 @@ class WorkspaceService(
         val normalizedEffort = effort?.trim().takeUnless { it.isNullOrEmpty() } ?: DefaultAiEffort
         require(normalizedProvider in SupportedAiProviders) { "Unsupported AI provider: $normalizedProvider" }
         require(normalizedEffort in SupportedAiEfforts) { "Unsupported AI effort: $normalizedEffort" }
+        val normalizedOpenAiBaseUrl = normalizeOpenAiBaseUrl(openAiBaseUrl)
         return WorkspaceAiSettings(
             provider = normalizedProvider,
             model = normalizedModel,
             effort = normalizedEffort,
-            openAiBaseUrl = openAiBaseUrl?.trim().takeUnless { it.isNullOrEmpty() } ?: DefaultOpenAiBaseUrl,
+            openAiBaseUrl = normalizedOpenAiBaseUrl,
             openAiApiKey = openAiApiKey?.trim().takeUnless { it.isNullOrEmpty() },
             openRouterApiKey = openRouterApiKey?.trim().takeUnless { it.isNullOrEmpty() },
             openRouterReferer = openRouterReferer?.trim().takeUnless { it.isNullOrEmpty() },
@@ -149,6 +156,28 @@ class WorkspaceService(
     private fun WorkspaceDto.settingsHash(): String =
         listOf(aiProvider, aiModel, aiEffort, openAiBaseUrl, openAiApiKey, openRouterApiKey, openRouterReferer, openRouterTitle)
             .joinToString(separator = "\u001F")
+
+    private fun normalizeOpenAiBaseUrl(baseUrl: String?): String {
+        val normalized = baseUrl?.trim().takeUnless { it.isNullOrEmpty() } ?: DefaultOpenAiBaseUrl
+        val uri = runCatching { URI(normalized) }.getOrElse {
+            throw IllegalArgumentException("OpenAI-compatible base URL must be a valid URL.")
+        }
+        require(uri.scheme.equals("https", ignoreCase = true)) { "OpenAI-compatible base URL must use https." }
+        require(uri.userInfo == null) { "OpenAI-compatible base URL must not include credentials." }
+        val host = uri.host?.trim()?.takeIf(String::isNotEmpty)
+            ?: throw IllegalArgumentException("OpenAI-compatible base URL must include a host.")
+        val asciiHost = runCatching { IDN.toASCII(host).lowercase() }.getOrElse {
+            throw IllegalArgumentException("OpenAI-compatible base URL host is invalid.")
+        }
+        require(asciiHost !in BlockedHostnames && !asciiHost.endsWith(".local")) {
+            "OpenAI-compatible base URL host is not allowed."
+        }
+        val addresses = runCatching { InetAddress.getAllByName(asciiHost).toList() }.getOrElse { emptyList() }
+        require(addresses.none(InetAddress::isBlockedTarget)) {
+            "OpenAI-compatible base URL host resolves to a private address."
+        }
+        return uri.toASCIIString()
+    }
 }
 
 private data class WorkspaceAiSettings(
@@ -170,9 +199,32 @@ private const val DefaultOpenAiBaseUrl = "https://api.openai.com/v1/chat/complet
 private const val DefaultOpenRouterTitle = "Trip Planner"
 private val SupportedAiProviders = setOf("codex-app-server", "openai-compatible", "openrouter")
 private val SupportedAiEfforts = setOf("low", "medium", "high", "xhigh")
+private val BlockedHostnames = setOf("localhost", "localhost.localdomain")
 
 private fun defaultModel(provider: String): String =
     when (provider) {
         "openrouter" -> DefaultOpenRouterModel
         else -> DefaultAiModel
     }
+
+private fun InetAddress.isBlockedTarget(): Boolean =
+    isAnyLocalAddress ||
+        isLoopbackAddress ||
+        isLinkLocalAddress ||
+        isSiteLocalAddress ||
+        isMulticastAddress ||
+        isCarrierGradeNat() ||
+        isBenchmarkNetwork() ||
+        isUniqueLocalIpv6() ||
+        hostAddress == "100.100.100.200"
+
+private fun InetAddress.isCarrierGradeNat(): Boolean =
+    this is Inet4Address && address[0].unsigned() == 100 && address[1].unsigned() in 64..127
+
+private fun InetAddress.isBenchmarkNetwork(): Boolean =
+    this is Inet4Address && address[0].unsigned() == 198 && address[1].unsigned() in 18..19
+
+private fun InetAddress.isUniqueLocalIpv6(): Boolean =
+    this is Inet6Address && (address[0].unsigned() and 0xfe) == 0xfc
+
+private fun Byte.unsigned(): Int = toInt() and 0xff

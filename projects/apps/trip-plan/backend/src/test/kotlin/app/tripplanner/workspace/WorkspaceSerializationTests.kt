@@ -12,6 +12,7 @@ class WorkspaceSerializationTests {
     fun `workspace response hides api keys and raw settings`() {
         val workspace = WorkspaceDto(
             id = "workspace_test",
+            owner = DefaultWorkspaceOwner,
             name = "Test",
             aiProvider = "openrouter",
             aiModel = "openai/gpt-5.2",

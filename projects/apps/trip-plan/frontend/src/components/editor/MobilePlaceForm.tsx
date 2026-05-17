@@ -17,9 +17,11 @@ const inputClass = "min-h-11 w-full rounded-md border border-[var(--line)] bg-[v
 
 export function MobilePlaceForm({ form, mode, onChange, onSubmit, onCancel }: MobilePlaceFormProps) {
   const editing = mode === "edit";
+  const formRef = useRef<HTMLFormElement | null>(null);
   const nameInputRef = useRef<HTMLInputElement | null>(null);
   const headingId = editing ? "mobile-place-edit-title" : "mobile-place-create-title";
-  useModalFocus({ initialFocusRef: nameInputRef, onClose: onCancel });
+  const fieldPrefix = editing ? "mobile-place-edit" : "mobile-place-create";
+  useModalFocus({ initialFocusRef: nameInputRef, modalRef: formRef, onClose: onCancel });
   const setField = (field: keyof UpsertPlaceRequest, value: string) => {
     onChange({ ...form, [field]: value });
   };
@@ -29,6 +31,7 @@ export function MobilePlaceForm({ form, mode, onChange, onSubmit, onCancel }: Mo
 
   return (
     <form
+      ref={formRef}
       className="fixed inset-0 z-[1300] grid content-start gap-3 overflow-y-auto bg-[var(--surface)] px-4 pb-[calc(env(safe-area-inset-bottom,0px)+18px)] pt-[calc(env(safe-area-inset-top,0px)+14px)] text-[var(--text)]"
       role="dialog"
       aria-modal="true"
@@ -51,22 +54,47 @@ export function MobilePlaceForm({ form, mode, onChange, onSubmit, onCancel }: Mo
           <X className="h-4 w-4" aria-hidden="true" />
         </button>
       </div>
-      <input ref={nameInputRef} className={inputClass} value={form.name} onChange={(event) => setField("name", event.target.value)} placeholder="장소 이름" />
+      <label className="grid gap-1" htmlFor={`${fieldPrefix}-name`}>
+        <span className="sr-only">장소 이름</span>
+        <input id={`${fieldPrefix}-name`} ref={nameInputRef} className={inputClass} value={form.name} onChange={(event) => setField("name", event.target.value)} placeholder="장소 이름" />
+      </label>
       <div className="grid grid-cols-2 gap-2">
-        <input className={inputClass} value={form.category ?? ""} onChange={(event) => setField("category", event.target.value)} placeholder="분류" />
-        <input className={inputClass} value={form.source ?? ""} onChange={(event) => setField("source", event.target.value)} placeholder="출처" />
+        <label className="grid gap-1" htmlFor={`${fieldPrefix}-category`}>
+          <span className="sr-only">분류</span>
+          <input id={`${fieldPrefix}-category`} className={inputClass} value={form.category ?? ""} onChange={(event) => setField("category", event.target.value)} placeholder="분류" />
+        </label>
+        <label className="grid gap-1" htmlFor={`${fieldPrefix}-source`}>
+          <span className="sr-only">출처</span>
+          <input id={`${fieldPrefix}-source`} className={inputClass} value={form.source ?? ""} onChange={(event) => setField("source", event.target.value)} placeholder="출처" />
+        </label>
       </div>
-      <textarea
-        className={`${inputClass} min-h-[clamp(180px,30dvh,360px)] py-3 leading-relaxed`}
-        value={form.note ?? ""}
-        onChange={(event) => setField("note", event.target.value)}
-        placeholder="설명"
-      />
-      <input className={inputClass} value={form.address ?? ""} onChange={(event) => setField("address", event.target.value)} placeholder="주소" />
-      <input className={inputClass} value={form.sourceUrl ?? ""} onChange={(event) => setField("sourceUrl", event.target.value)} placeholder="참고 링크" />
+      <label className="grid gap-1" htmlFor={`${fieldPrefix}-note`}>
+        <span className="sr-only">설명</span>
+        <textarea
+          id={`${fieldPrefix}-note`}
+          className={`${inputClass} min-h-[clamp(180px,30dvh,360px)] py-3 leading-relaxed`}
+          value={form.note ?? ""}
+          onChange={(event) => setField("note", event.target.value)}
+          placeholder="설명"
+        />
+      </label>
+      <label className="grid gap-1" htmlFor={`${fieldPrefix}-address`}>
+        <span className="sr-only">주소</span>
+        <input id={`${fieldPrefix}-address`} className={inputClass} value={form.address ?? ""} onChange={(event) => setField("address", event.target.value)} placeholder="주소" />
+      </label>
+      <label className="grid gap-1" htmlFor={`${fieldPrefix}-source-url`}>
+        <span className="sr-only">참고 링크</span>
+        <input id={`${fieldPrefix}-source-url`} className={inputClass} value={form.sourceUrl ?? ""} onChange={(event) => setField("sourceUrl", event.target.value)} placeholder="참고 링크" />
+      </label>
       <div className="grid grid-cols-2 gap-2">
-        <input className={inputClass} type="number" step="any" value={form.lat ?? ""} onChange={(event) => setNumberField("lat", event.target.value)} placeholder="위도" />
-        <input className={inputClass} type="number" step="any" value={form.lng ?? ""} onChange={(event) => setNumberField("lng", event.target.value)} placeholder="경도" />
+        <label className="grid gap-1" htmlFor={`${fieldPrefix}-lat`}>
+          <span className="sr-only">위도</span>
+          <input id={`${fieldPrefix}-lat`} className={inputClass} type="number" step="any" value={form.lat ?? ""} onChange={(event) => setNumberField("lat", event.target.value)} placeholder="위도" />
+        </label>
+        <label className="grid gap-1" htmlFor={`${fieldPrefix}-lng`}>
+          <span className="sr-only">경도</span>
+          <input id={`${fieldPrefix}-lng`} className={inputClass} type="number" step="any" value={form.lng ?? ""} onChange={(event) => setNumberField("lng", event.target.value)} placeholder="경도" />
+        </label>
       </div>
       <div className="sticky bottom-0 grid grid-cols-[minmax(0,1fr)_auto] gap-2 bg-[var(--surface)] pt-2">
         <button className="min-h-11 rounded-md border-0 bg-[var(--teal)] px-4 text-sm font-extrabold text-white" type="submit">

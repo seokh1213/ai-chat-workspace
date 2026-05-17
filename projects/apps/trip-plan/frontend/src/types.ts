@@ -1,5 +1,6 @@
 export type Workspace = {
   id: string;
+  owner: string;
   name: string;
   aiProvider: string;
   aiModel: string;

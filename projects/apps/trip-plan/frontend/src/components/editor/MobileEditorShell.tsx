@@ -11,6 +11,15 @@ interface MobileEditorShellProps {
 }
 
 export function MobileEditorShell({ props, state }: MobileEditorShellProps) {
+  const mobileHeaderAction = (
+    <MobileViewSwitcher
+      activeView={state.mobileView}
+      onOpenDetails={state.openMobileDetails}
+      onOpenMap={state.openMobileMap}
+      onOpenChatList={state.openMobileChatList}
+    />
+  );
+
   if (state.mobileView === "details") {
     return <MobileItineraryView props={props} state={state} />;
   }
@@ -25,15 +34,7 @@ export function MobileEditorShell({ props, state }: MobileEditorShellProps) {
         chat={props.chat}
         className="h-dvh w-full border-0"
         mobileHeaderInset
-        mobileHeaderAction={!props.chat.activeChatId ? (
-          <MobileViewSwitcher
-            activeView={state.mobileView}
-            onOpenDetails={state.openMobileDetails}
-            onOpenMap={state.openMobileMap}
-            onOpenChatList={state.openMobileChatList}
-          />
-        ) : undefined}
-        hideActiveHeaderActions
+        mobileHeaderAction={mobileHeaderAction}
         hideCollapseButton
         showListBackButton
         onBack={props.onBack}
