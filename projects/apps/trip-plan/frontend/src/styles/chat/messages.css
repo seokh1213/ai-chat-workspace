@@ -125,85 +125,12 @@
   text-decoration-color: rgba(255, 255, 255, 0.72);
 }
 
-.chat-pending-status {
-  display: grid;
-  gap: 4px;
-  color: var(--text);
-  font-size: 13px;
-  line-height: 1.45;
-}
-
-.chat-pending-status span {
-  font-weight: 750;
-}
-
-.chat-pending-status small,
-.chat-pending-status em {
-  color: var(--muted);
-  font-size: 12px;
-  font-style: normal;
-  overflow-wrap: anywhere;
-}
-
 .chat-activity-strip {
   margin-bottom: 10px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--surface-soft);
   padding: 9px 10px;
-}
-
-.operation-preview {
-  display: grid;
-  gap: 6px;
-  margin-top: 10px;
-  border: 1px solid var(--line);
-  border-radius: 7px;
-  background: var(--surface-soft);
-  padding: 9px 10px;
-  color: var(--text);
-}
-
-.operation-preview-toggle {
-  display: flex;
-  min-height: 24px;
-  align-items: center;
-  gap: 7px;
-  border: 0;
-  background: transparent;
-  color: var(--muted);
-  padding: 0;
-  text-align: left;
-}
-
-.operation-preview-toggle strong {
-  color: var(--muted);
-  font-size: 11px;
-  font-weight: 800;
-}
-
-.operation-preview-toggle span {
-  font-size: 11px;
-  font-weight: 800;
-}
-
-.operation-preview-toggle svg {
-  transition: transform 0.16s ease;
-}
-
-.operation-preview-toggle[aria-expanded="true"] svg {
-  transform: rotate(90deg);
-}
-
-.operation-preview ul {
-  display: grid;
-  gap: 4px;
-  margin: 0;
-  padding-left: 17px;
-}
-
-.operation-preview li {
-  padding-left: 2px;
 }
 
 .message-meta {

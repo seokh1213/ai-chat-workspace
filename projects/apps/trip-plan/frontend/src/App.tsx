@@ -76,7 +76,6 @@ export function App() {
     removePendingChatAttachment,
     addPendingChatFiles,
     chatSessions,
-    chatSessionId,
     activeChatId,
     messages,
     editRuns,
@@ -283,38 +282,39 @@ export function App() {
           onFocusItem={setFocusedItemId}
           onDeleteItem={removeItem}
           onBack={navigateToSelect}
-          chatSessions={chatSessions}
-          chatSessionId={chatSessionId}
-          activeChatId={activeChatId}
-          isChatSessionCreating={isChatSessionCreating}
-          isChatSessionsLoading={isChatSessionsLoading}
-          isChatDetailLoading={isChatDetailLoading}
-          checkpoints={tripState.checkpoints}
-          isRollingBack={isRollingBack}
-          messages={messages}
-          editRuns={editRuns}
-          pendingChatAttachments={pendingChatAttachments}
-          chatText={chatText}
-          isChatSending={isChatSending}
-          chatStreamLabel={chatStreamLabel}
-          chatActivity={chatActivity}
-          chatElapsedSeconds={chatElapsedSeconds}
-          chatStreamingText={chatStreamingText}
-          chatOperationPreview={chatOperationPreview}
-          onSelectChatSession={(sessionId) => void selectChatSession(sessionId)}
-          onCreateChatSession={() => void createNextChatSession()}
-          onOpenChatList={openChatList}
-          onRollbackCheckpoint={(checkpointId) => void rollbackToCheckpoint(checkpointId)}
-          onChatTextChange={setChatText}
-          onAddChatFiles={(files) => void addPendingChatFiles(files)}
-          onRemovePendingChatAttachment={(localId) => void removePendingChatAttachment(localId)}
-          onSubmitChat={submitChat}
-          onStopChat={stopChatResponse}
+          chat={{
+            sessions: chatSessions,
+            activeChatId,
+            isSessionCreating: isChatSessionCreating,
+            isSessionsLoading: isChatSessionsLoading,
+            isDetailLoading: isChatDetailLoading,
+            checkpoints: tripState.checkpoints,
+            isRollingBack,
+            messages,
+            editRuns,
+            pendingAttachments: pendingChatAttachments,
+            text: chatText,
+            isSending: isChatSending,
+            streamLabel: chatStreamLabel,
+            activity: chatActivity,
+            elapsedSeconds: chatElapsedSeconds,
+            streamingText: chatStreamingText,
+            operationPreview: chatOperationPreview,
+            onSelectSession: (sessionId) => void selectChatSession(sessionId),
+            onCreateSession: () => void createNextChatSession(),
+            onOpenList: openChatList,
+            onRollbackCheckpoint: (checkpointId) => void rollbackToCheckpoint(checkpointId),
+            onTextChange: setChatText,
+            onAddFiles: (files) => void addPendingChatFiles(files),
+            onRemovePendingAttachment: (localId) => void removePendingChatAttachment(localId),
+            onSubmit: submitChat,
+            onStop: stopChatResponse,
+            onRenameSession: (session) => void renameChat(session),
+            onUpdateSessionTitle: (session, title) => updateChatTitle(session, title),
+            onCopySession: (session) => copyChatSessionMarkdown(session),
+            onDeleteSession: (session) => void removeChat(session)
+          }}
           onDeleteTrip={() => void deleteActiveTrip()}
-          onRenameChatSession={(session) => void renameChat(session)}
-          onUpdateChatSessionTitle={(session, title) => updateChatTitle(session, title)}
-          onCopyChatSession={(session) => copyChatSessionMarkdown(session)}
-          onDeleteChatSession={(session) => void removeChat(session)}
         />
       </Suspense>
     );

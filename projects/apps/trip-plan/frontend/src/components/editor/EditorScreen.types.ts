@@ -17,6 +17,39 @@ import type {
 } from "../../types";
 import type { PendingChatAttachment } from "../chat/types";
 
+export interface EditorChatProps {
+  sessions: ChatSession[];
+  activeChatId: string | null;
+  isSessionCreating: boolean;
+  isSessionsLoading: boolean;
+  isDetailLoading: boolean;
+  checkpoints: CheckpointSummary[];
+  isRollingBack: boolean;
+  messages: ChatMessage[];
+  editRuns: AiEditRunSummary[];
+  pendingAttachments: PendingChatAttachment[];
+  text: string;
+  isSending: boolean;
+  streamLabel: string | null;
+  activity: ChatRunActivityEvent | null;
+  elapsedSeconds: number;
+  streamingText: string;
+  operationPreview: string[];
+  onSelectSession: (sessionId: string) => void;
+  onCreateSession: () => void;
+  onOpenList: () => void;
+  onRollbackCheckpoint: (checkpointId: string) => void;
+  onTextChange: (text: string) => void;
+  onAddFiles: (files: FileList | File[] | null) => void;
+  onRemovePendingAttachment: (localId: string) => void;
+  onSubmit: (event: FormEvent) => void;
+  onStop: () => void;
+  onRenameSession: (session: ChatSession) => void;
+  onUpdateSessionTitle: (session: ChatSession, title: string) => Promise<void>;
+  onCopySession: (session: ChatSession) => Promise<void>;
+  onDeleteSession: (session: ChatSession) => void;
+}
+
 export interface EditorScreenProps {
   className: string;
   tripState: TripState;
@@ -56,36 +89,6 @@ export interface EditorScreenProps {
   onFocusItem: (itemId: string | null) => void;
   onDeleteItem: (itemId: string) => void;
   onBack: () => void;
-  chatSessions: ChatSession[];
-  chatSessionId: string;
-  activeChatId: string | null;
-  isChatSessionCreating: boolean;
-  isChatSessionsLoading: boolean;
-  isChatDetailLoading: boolean;
-  checkpoints: CheckpointSummary[];
-  isRollingBack: boolean;
-  messages: ChatMessage[];
-  editRuns: AiEditRunSummary[];
-  pendingChatAttachments: PendingChatAttachment[];
-  chatText: string;
-  isChatSending: boolean;
-  chatStreamLabel: string | null;
-  chatActivity: ChatRunActivityEvent | null;
-  chatElapsedSeconds: number;
-  chatStreamingText: string;
-  chatOperationPreview: string[];
-  onSelectChatSession: (sessionId: string) => void;
-  onCreateChatSession: () => void;
-  onOpenChatList: () => void;
-  onRollbackCheckpoint: (checkpointId: string) => void;
-  onChatTextChange: (text: string) => void;
-  onAddChatFiles: (files: FileList | File[] | null) => void;
-  onRemovePendingChatAttachment: (localId: string) => void;
-  onSubmitChat: (event: FormEvent) => void;
-  onStopChat: () => void;
+  chat: EditorChatProps;
   onDeleteTrip: () => void;
-  onRenameChatSession: (session: ChatSession) => void;
-  onUpdateChatSessionTitle: (session: ChatSession, title: string) => Promise<void>;
-  onCopyChatSession: (session: ChatSession) => Promise<void>;
-  onDeleteChatSession: (session: ChatSession) => void;
 }

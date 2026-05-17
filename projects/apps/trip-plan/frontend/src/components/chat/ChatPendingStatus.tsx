@@ -9,10 +9,14 @@ export function ChatPendingStatus(props: {
   const label = chatPendingLabel(props.label, props.activity, props.elapsedSeconds);
   const detail = chatActivityDetail(props.activity);
   return (
-    <div className="chat-pending-status">
-      <span>{label}</span>
-      {props.elapsedSeconds > 0 ? <small>{formatElapsedSeconds(props.elapsedSeconds)} 경과</small> : null}
-      {detail ? <em>{detail}</em> : null}
+    <div className="grid gap-1 text-[13px] leading-[1.45] text-[var(--text)]">
+      <span className="font-[750]">{label}</span>
+      {props.elapsedSeconds > 0 ? (
+        <small className="text-xs not-italic text-[var(--muted)] [overflow-wrap:anywhere]">
+          {formatElapsedSeconds(props.elapsedSeconds)} 경과
+        </small>
+      ) : null}
+      {detail ? <em className="text-xs not-italic text-[var(--muted)] [overflow-wrap:anywhere]">{detail}</em> : null}
     </div>
   );
 }

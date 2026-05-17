@@ -1,7 +1,7 @@
 import { PanelLeftOpen, PanelRightOpen } from "lucide-react";
 
-import { ChatPanel } from "../chat/ChatPanel";
 import { MapCanvas } from "../map/MapCanvas";
+import { EditorChatPanel } from "./EditorChatPanel";
 import type { EditorScreenProps } from "./EditorScreen.types";
 import { PlannerSidebar } from "./PlannerSidebar";
 import type { EditorScreenState } from "./useEditorScreenState";
@@ -120,39 +120,13 @@ export function DesktopEditorShell({ props, state }: DesktopEditorShellProps) {
       ) : null}
 
       {!props.chatCollapsed ? (
-        <ChatPanel
-          activeChatId={props.activeChatId}
-          chatSessions={props.chatSessions}
-          isChatSessionCreating={props.isChatSessionCreating}
-          isChatSessionsLoading={props.isChatSessionsLoading}
-          isChatDetailLoading={props.isChatDetailLoading}
-          checkpoints={props.checkpoints}
-          isRollingBack={props.isRollingBack}
-          messages={props.messages}
-          editRuns={props.editRuns}
-          pendingChatAttachments={props.pendingChatAttachments}
-          chatText={props.chatText}
-          isChatSending={props.isChatSending}
-          chatStreamLabel={props.chatStreamLabel}
-          chatActivity={props.chatActivity}
-          chatElapsedSeconds={props.chatElapsedSeconds}
-          chatStreamingText={props.chatStreamingText}
-          chatOperationPreview={props.chatOperationPreview}
+        <EditorChatPanel
+          chat={props.chat}
           onBack={props.onBack}
-          onToggleChat={props.onToggleChat}
-          onOpenChatList={state.openChatList}
           onCreateChatSession={state.createChatSession}
+          onOpenChatList={state.openChatList}
           onSelectChatSession={state.selectChatSession}
-          onRollbackCheckpoint={props.onRollbackCheckpoint}
-          onChatTextChange={props.onChatTextChange}
-          onAddChatFiles={props.onAddChatFiles}
-          onRemovePendingChatAttachment={props.onRemovePendingChatAttachment}
-          onSubmitChat={props.onSubmitChat}
-          onStopChat={props.onStopChat}
-          onRenameChatSession={props.onRenameChatSession}
-          onUpdateChatSessionTitle={props.onUpdateChatSessionTitle}
-          onCopyChatSession={props.onCopyChatSession}
-          onDeleteChatSession={props.onDeleteChatSession}
+          onToggleChat={props.onToggleChat}
         />
       ) : (
         <button className="map-panel-button right" type="button" aria-label="일정 조율 열기" onClick={props.onToggleChat}>

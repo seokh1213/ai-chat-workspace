@@ -1,7 +1,9 @@
 import { X } from "lucide-react";
 import type { FormEvent } from "react";
+import { useRef } from "react";
 
 import type { UpsertItineraryItemRequest } from "../../types";
+import { useModalFocus } from "./useModalFocus";
 
 interface MobileItemFormProps {
   form: UpsertItineraryItemRequest;
@@ -15,6 +17,9 @@ const inputClass = "min-h-11 w-full rounded-md border border-[var(--line)] bg-[v
 
 export function MobileItemForm({ form, mode, onChange, onSubmit, onCancel }: MobileItemFormProps) {
   const editing = mode === "edit";
+  const titleInputRef = useRef<HTMLInputElement | null>(null);
+  const headingId = editing ? "mobile-item-edit-title" : "mobile-item-create-title";
+  useModalFocus({ initialFocusRef: titleInputRef, onClose: onCancel });
   const setField = (field: keyof UpsertItineraryItemRequest, value: string) => {
     onChange({ ...form, [field]: value });
   };
@@ -25,11 +30,14 @@ export function MobileItemForm({ form, mode, onChange, onSubmit, onCancel }: Mob
   return (
     <form
       className="fixed inset-0 z-[1300] grid content-start gap-3 overflow-y-auto bg-[var(--surface)] px-4 pb-[calc(env(safe-area-inset-bottom,0px)+18px)] pt-[calc(env(safe-area-inset-top,0px)+14px)] text-[var(--text)]"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={headingId}
       onSubmit={onSubmit}
     >
       <div className="sticky top-0 z-10 flex items-center justify-between gap-3 bg-[var(--surface)] pb-2">
         <div className="grid min-w-0 gap-1">
-          <strong className="text-xl font-extrabold leading-6">{editing ? "일정 수정" : "일정 추가"}</strong>
+          <strong className="text-xl font-extrabold leading-6" id={headingId}>{editing ? "일정 수정" : "일정 추가"}</strong>
           <span className="text-xs font-bold text-[var(--secondary)]">
             {editing ? "시간, 설명, 위치 정보를 조정합니다" : "선택한 날짜에 새 일정을 추가합니다"}
           </span>
@@ -47,7 +55,7 @@ export function MobileItemForm({ form, mode, onChange, onSubmit, onCancel }: Mob
         <input className={inputClass} value={form.timeText ?? ""} onChange={(event) => setField("timeText", event.target.value)} placeholder="시간" />
         <input className={inputClass} value={form.category ?? ""} onChange={(event) => setField("category", event.target.value)} placeholder="분류" />
       </div>
-      <input className={inputClass} value={form.title} onChange={(event) => setField("title", event.target.value)} placeholder="일정 제목" />
+      <input ref={titleInputRef} className={inputClass} value={form.title} onChange={(event) => setField("title", event.target.value)} placeholder="일정 제목" />
       <textarea
         className={`${inputClass} min-h-[clamp(220px,34dvh,420px)] py-3 leading-relaxed`}
         value={form.memo ?? ""}

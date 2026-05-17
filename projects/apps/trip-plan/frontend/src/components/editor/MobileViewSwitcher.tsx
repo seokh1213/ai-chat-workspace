@@ -18,8 +18,8 @@ export function MobileViewSwitcher({
 }: MobileViewSwitcherProps) {
   const [mounted, setMounted] = useState(false);
   const [open, setOpen] = useState(false);
+  const triggerButtonRef = useRef<HTMLButtonElement | null>(null);
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
-  const openingRef = useRef(false);
   const items = [
     { view: "details", label: "일정", Icon: CalendarDays, onSelect: onOpenDetails },
     { view: "map", label: "지도", Icon: MapPinned, onSelect: onOpenMap },
@@ -27,9 +27,9 @@ export function MobileViewSwitcher({
   ] satisfies Array<{ view: MobileEditorView; label: string; Icon: LucideIcon; onSelect: () => void }>;
 
   function closeSheet() {
-    openingRef.current = false;
     setOpen(false);
     setMounted(false);
+    triggerButtonRef.current?.focus();
   }
 
   useEffect(() => {
@@ -49,16 +49,6 @@ export function MobileViewSwitcher({
   }, [mounted]);
 
   useEffect(() => {
-    if (!mounted || !openingRef.current) return;
-
-    const frameId = window.requestAnimationFrame(() => {
-      setOpen(true);
-    });
-
-    return () => window.cancelAnimationFrame(frameId);
-  }, [mounted]);
-
-  useEffect(() => {
     if (open) closeButtonRef.current?.focus();
   }, [open]);
 
@@ -68,8 +58,8 @@ export function MobileViewSwitcher({
   }
 
   function openSheet() {
-    openingRef.current = true;
     setMounted(true);
+    setOpen(true);
   }
 
   return (
@@ -77,6 +67,7 @@ export function MobileViewSwitcher({
       <button
         className="grid h-9 w-9 place-items-center rounded-md border-0 bg-transparent p-0 text-[var(--secondary)] hover:bg-[var(--surface-soft)] hover:text-[var(--teal)]"
         type="button"
+        ref={triggerButtonRef}
         aria-label="화면 전환 열기"
         aria-expanded={open}
         onClick={openSheet}

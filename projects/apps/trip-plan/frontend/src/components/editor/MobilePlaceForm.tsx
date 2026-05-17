@@ -1,7 +1,9 @@
 import { X } from "lucide-react";
 import type { FormEvent } from "react";
+import { useRef } from "react";
 
 import type { UpsertPlaceRequest } from "../../types";
+import { useModalFocus } from "./useModalFocus";
 
 interface MobilePlaceFormProps {
   form: UpsertPlaceRequest;
@@ -15,6 +17,9 @@ const inputClass = "min-h-11 w-full rounded-md border border-[var(--line)] bg-[v
 
 export function MobilePlaceForm({ form, mode, onChange, onSubmit, onCancel }: MobilePlaceFormProps) {
   const editing = mode === "edit";
+  const nameInputRef = useRef<HTMLInputElement | null>(null);
+  const headingId = editing ? "mobile-place-edit-title" : "mobile-place-create-title";
+  useModalFocus({ initialFocusRef: nameInputRef, onClose: onCancel });
   const setField = (field: keyof UpsertPlaceRequest, value: string) => {
     onChange({ ...form, [field]: value });
   };
@@ -25,11 +30,14 @@ export function MobilePlaceForm({ form, mode, onChange, onSubmit, onCancel }: Mo
   return (
     <form
       className="fixed inset-0 z-[1300] grid content-start gap-3 overflow-y-auto bg-[var(--surface)] px-4 pb-[calc(env(safe-area-inset-bottom,0px)+18px)] pt-[calc(env(safe-area-inset-top,0px)+14px)] text-[var(--text)]"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={headingId}
       onSubmit={onSubmit}
     >
       <div className="sticky top-0 z-10 flex items-center justify-between gap-3 bg-[var(--surface)] pb-2">
         <div className="grid min-w-0 gap-1">
-          <strong className="text-xl font-extrabold leading-6">{editing ? "장소 수정" : "장소 추가"}</strong>
+          <strong className="text-xl font-extrabold leading-6" id={headingId}>{editing ? "장소 수정" : "장소 추가"}</strong>
           <span className="text-xs font-bold text-[var(--secondary)]">
             {editing ? "장소 설명, 주소, 좌표를 조정합니다" : "조사 장소 목록에 새 후보를 추가합니다"}
           </span>
@@ -43,7 +51,7 @@ export function MobilePlaceForm({ form, mode, onChange, onSubmit, onCancel }: Mo
           <X className="h-4 w-4" aria-hidden="true" />
         </button>
       </div>
-      <input className={inputClass} value={form.name} onChange={(event) => setField("name", event.target.value)} placeholder="장소 이름" />
+      <input ref={nameInputRef} className={inputClass} value={form.name} onChange={(event) => setField("name", event.target.value)} placeholder="장소 이름" />
       <div className="grid grid-cols-2 gap-2">
         <input className={inputClass} value={form.category ?? ""} onChange={(event) => setField("category", event.target.value)} placeholder="분류" />
         <input className={inputClass} value={form.source ?? ""} onChange={(event) => setField("source", event.target.value)} placeholder="출처" />

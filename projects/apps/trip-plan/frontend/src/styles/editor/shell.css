@@ -71,18 +71,7 @@
   display: block;
 }
 
-.chat-heading {
-  display: grid;
-  min-width: 0;
-  gap: 5px;
-}
-
-.chat-heading strong {
-  line-height: 1.1;
-}
-
-.panel-header-actions,
-.chat-header-main {
+.panel-header-actions {
   display: flex;
   min-width: 0;
   align-items: center;
@@ -141,14 +130,4 @@
   font-size: 11px;
   font-style: normal;
   font-weight: 700;
-}
-
-.chat-header-main {
-  flex: 1 1 auto;
-}
-
-.chat-header-actions {
-  display: flex;
-  flex: 0 0 auto;
-  gap: 8px;
 }

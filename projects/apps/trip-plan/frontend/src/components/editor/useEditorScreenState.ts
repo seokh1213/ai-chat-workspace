@@ -24,6 +24,7 @@ import type {
   UpsertPlaceRequest
 } from "../../types";
 import type { EditorLayout } from "../../lib/editorLayout";
+import type { EditorChatProps } from "./EditorScreen.types";
 
 interface UseEditorScreenStateProps {
   className: string;
@@ -32,7 +33,7 @@ interface UseEditorScreenStateProps {
   selectedDayId: string;
   focusedItemId: string | null;
   layout: EditorLayout;
-  activeChatId: string | null;
+  chat: Pick<EditorChatProps, "activeChatId" | "onOpenList" | "onCreateSession" | "onSelectSession">;
   chatCollapsed: boolean;
   plannerCollapsed: boolean;
   scheduleCollapsed: boolean;
@@ -41,9 +42,6 @@ interface UseEditorScreenStateProps {
   editingPlaceId: string | null;
   itemForm: UpsertItineraryItemRequest;
   placeForm: UpsertPlaceRequest;
-  onOpenChatList: () => void;
-  onCreateChatSession: () => void;
-  onSelectChatSession: (sessionId: string) => void;
   onToggleChat: () => void;
   onTogglePlanner: () => void;
   onToggleSchedule: () => void;
@@ -113,7 +111,7 @@ export function useEditorScreenState(props: UseEditorScreenStateProps): EditorSc
   const [focusedMapPlaceId, setFocusedMapPlaceId] = useState<string | null>(null);
   const [shouldCenterFocusedPlace, setShouldCenterFocusedPlace] = useState(false);
   const [detailHighlight, setDetailHighlight] = useState<{ type: "item" | "place"; id: string } | null>(null);
-  const { mobileView, setMobileView } = useMobileEditorView(props.activeChatId);
+  const { mobileView, setMobileView } = useMobileEditorView(props.chat.activeChatId);
   const focusClearTimerRef = useRef<number | null>(null);
   const detailFocusClearTimerRef = useRef<number | null>(null);
   const suppressDetailHighlightClearRef = useRef(false);
@@ -143,7 +141,7 @@ export function useEditorScreenState(props: UseEditorScreenStateProps): EditorSc
     if (props.chatCollapsed) {
       props.onToggleChat();
     }
-    props.onOpenChatList();
+    props.chat.onOpenList();
     setMobileView("chat", "push");
   }
 
@@ -343,17 +341,17 @@ export function useEditorScreenState(props: UseEditorScreenStateProps): EditorSc
       }
     },
     openChatList: () => {
-      props.onOpenChatList();
+      props.chat.onOpenList();
       setMobileView("chat");
     },
     createChatSession: () => {
       if (props.chatCollapsed) props.onToggleChat();
       setMobileView("chat");
-      props.onCreateChatSession();
+      props.chat.onCreateSession();
     },
     selectChatSession: (sessionId) => {
       setMobileView("chat");
-      props.onSelectChatSession(sessionId);
+      props.chat.onSelectSession(sessionId);
     },
     startPanelResize,
     resizePanelByKey,

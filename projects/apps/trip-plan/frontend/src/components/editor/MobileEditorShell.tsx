@@ -1,4 +1,4 @@
-import { ChatPanel } from "../chat/ChatPanel";
+import { EditorChatPanel } from "./EditorChatPanel";
 import type { EditorScreenProps } from "./EditorScreen.types";
 import { MobileItineraryView } from "./MobileItineraryView";
 import { MobileMapView } from "./MobileMapView";
@@ -20,26 +20,12 @@ export function MobileEditorShell({ props, state }: MobileEditorShellProps) {
   }
 
   return (
-    <main className="relative h-dvh overflow-hidden bg-[var(--surface)] text-[var(--text)] [&>.chat-panel]:h-dvh [&>.chat-panel]:w-full [&>.chat-panel]:border-0 [&_.chat-header]:min-h-[calc(env(safe-area-inset-top,0px)+56px)] [&_.chat-header]:pb-2 [&_.chat-header]:pt-[calc(env(safe-area-inset-top,0px)+8px)]">
-      <ChatPanel
-        activeChatId={props.activeChatId}
-        chatSessions={props.chatSessions}
-        isChatSessionCreating={props.isChatSessionCreating}
-        isChatSessionsLoading={props.isChatSessionsLoading}
-        isChatDetailLoading={props.isChatDetailLoading}
-        checkpoints={props.checkpoints}
-        isRollingBack={props.isRollingBack}
-        messages={props.messages}
-        editRuns={props.editRuns}
-        pendingChatAttachments={props.pendingChatAttachments}
-        chatText={props.chatText}
-        isChatSending={props.isChatSending}
-        chatStreamLabel={props.chatStreamLabel}
-        chatActivity={props.chatActivity}
-        chatElapsedSeconds={props.chatElapsedSeconds}
-        chatStreamingText={props.chatStreamingText}
-        chatOperationPreview={props.chatOperationPreview}
-        mobileHeaderAction={!props.activeChatId ? (
+    <main className="relative h-dvh overflow-hidden bg-[var(--surface)] text-[var(--text)]">
+      <EditorChatPanel
+        chat={props.chat}
+        className="h-dvh w-full border-0"
+        mobileHeaderInset
+        mobileHeaderAction={!props.chat.activeChatId ? (
           <MobileViewSwitcher
             activeView={state.mobileView}
             onOpenDetails={state.openMobileDetails}
@@ -47,24 +33,14 @@ export function MobileEditorShell({ props, state }: MobileEditorShellProps) {
             onOpenChatList={state.openMobileChatList}
           />
         ) : undefined}
-        onBack={props.onBack}
-        onToggleChat={props.onToggleChat}
-        onOpenChatList={state.openChatList}
-        onCreateChatSession={state.createChatSession}
-        onSelectChatSession={state.selectChatSession}
-        onRollbackCheckpoint={props.onRollbackCheckpoint}
-        onChatTextChange={props.onChatTextChange}
-        onAddChatFiles={props.onAddChatFiles}
-        onRemovePendingChatAttachment={props.onRemovePendingChatAttachment}
-        onSubmitChat={props.onSubmitChat}
-        onStopChat={props.onStopChat}
-        onRenameChatSession={props.onRenameChatSession}
-        onUpdateChatSessionTitle={props.onUpdateChatSessionTitle}
-        onCopyChatSession={props.onCopyChatSession}
-        onDeleteChatSession={props.onDeleteChatSession}
         hideActiveHeaderActions
         hideCollapseButton
         showListBackButton
+        onBack={props.onBack}
+        onCreateChatSession={state.createChatSession}
+        onOpenChatList={state.openChatList}
+        onSelectChatSession={state.selectChatSession}
+        onToggleChat={props.onToggleChat}
       />
     </main>
   );

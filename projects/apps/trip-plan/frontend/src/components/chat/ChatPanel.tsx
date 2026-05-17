@@ -24,6 +24,7 @@ import { ChatPanelHeader } from "./ChatPanelHeader";
 import type { PendingChatAttachment } from "./types";
 
 interface ChatPanelProps {
+  className?: string;
   activeChatId: string | null;
   chatSessions: ChatSession[];
   isChatSessionCreating: boolean;
@@ -57,6 +58,7 @@ interface ChatPanelProps {
   onCopyChatSession: (session: ChatSession) => Promise<void>;
   onDeleteChatSession: (session: ChatSession) => void;
   mobileHeaderAction?: ReactNode;
+  mobileHeaderInset?: boolean;
   hideActiveHeaderActions?: boolean;
   hideCollapseButton?: boolean;
   showListBackButton?: boolean;
@@ -161,7 +163,7 @@ export function ChatPanel(props: ChatPanelProps) {
   }
 
   return (
-    <aside className="chat-panel">
+    <aside className={["chat-panel", props.className].filter(Boolean).join(" ")}>
       <ChatPanelHeader
         activeChatSession={activeChatSession}
         chatTitleDraft={chatTitleDraft}
@@ -171,6 +173,7 @@ export function ChatPanel(props: ChatPanelProps) {
         isChatTitleSaving={isChatTitleSaving}
         hideActiveHeaderActions={props.hideActiveHeaderActions}
         hideCollapseButton={props.hideCollapseButton}
+        mobileHeaderInset={props.mobileHeaderInset}
         showListBackButton={props.showListBackButton}
         onBack={props.onBack}
         onChatTitleChange={setChatTitleDraft}

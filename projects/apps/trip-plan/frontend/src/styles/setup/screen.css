@@ -33,7 +33,6 @@
 }
 
 .setup-form input,
-.meta-form input,
 .item-form input,
 .item-form textarea,
 .chat-form textarea {
@@ -45,14 +44,12 @@
   outline: none;
 }
 
-.setup-form input,
-.meta-form input {
+.setup-form input {
   height: 38px;
   padding: 0 11px;
 }
 
 .setup-form input:focus,
-.meta-form input:focus,
 .item-form input:focus,
 .item-form textarea:focus,
 .chat-form textarea:focus {

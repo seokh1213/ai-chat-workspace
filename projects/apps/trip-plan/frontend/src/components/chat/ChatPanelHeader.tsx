@@ -20,8 +20,15 @@ interface ChatPanelHeaderProps {
   mobileHeaderAction?: ReactNode;
   hideActiveHeaderActions?: boolean;
   hideCollapseButton?: boolean;
+  mobileHeaderInset?: boolean;
   showListBackButton?: boolean;
 }
+
+const headerBaseClass = "flex shrink-0 items-center justify-between gap-3 border-b border-[var(--line)] px-3 text-[var(--text)]";
+const desktopHeaderClass = `${headerBaseClass} min-h-14`;
+const mobileHeaderClass = `${headerBaseClass} min-h-[calc(env(safe-area-inset-top,0px)+56px)] pb-2 pt-[calc(env(safe-area-inset-top,0px)+8px)]`;
+const headerIconButtonClass = "grid h-9 w-9 shrink-0 place-items-center rounded-md border-0 bg-transparent p-0 text-[var(--secondary)] hover:bg-[var(--surface-soft)] hover:text-[var(--teal)] disabled:cursor-not-allowed disabled:opacity-50";
+const copiedIconButtonClass = "grid h-9 w-9 shrink-0 place-items-center rounded-md border-0 bg-[var(--teal-soft)] p-0 text-[var(--teal)] disabled:cursor-not-allowed disabled:opacity-50";
 
 export function ChatPanelHeader(props: ChatPanelHeaderProps) {
   if (props.activeChatSession) {
@@ -29,16 +36,16 @@ export function ChatPanelHeader(props: ChatPanelHeaderProps) {
   }
 
   return (
-    <div className="chat-header">
-      <div className="chat-header-main">
+    <div className={props.mobileHeaderInset ? mobileHeaderClass : desktopHeaderClass}>
+      <div className="flex min-w-0 flex-1 items-center gap-2">
         {props.showListBackButton ? (
-          <button className="icon-button header-icon-button" type="button" aria-label="여행 목록으로 돌아가기" onClick={props.onBack}>
-            <ChevronLeft size={16} />
+          <button className={headerIconButtonClass} type="button" aria-label="여행 목록으로 돌아가기" onClick={props.onBack}>
+            <ChevronLeft className="h-4 w-4" aria-hidden="true" />
           </button>
         ) : null}
-        <div className="chat-heading">
-          <strong>AI 대화</strong>
-          <span>주제별로 나눠서 이어갑니다</span>
+        <div className="grid min-w-0 gap-1">
+          <strong className="truncate text-sm font-extrabold leading-4">AI 대화</strong>
+          <span className="truncate text-xs font-bold text-[var(--secondary)]">주제별로 나눠서 이어갑니다</span>
         </div>
       </div>
       <ChatHeaderActions
@@ -58,34 +65,33 @@ function ActiveChatPanelHeader(props: ChatPanelHeaderProps & { activeChatSession
   const titleUnchanged = title === props.activeChatSession.title;
 
   return (
-    <div className="chat-header active-chat-header">
-      <button className="icon-button header-icon-button" type="button" aria-label="AI 대화 목록" onClick={props.onOpenChatList}>
-        <ChevronLeft size={16} />
+    <div className={props.mobileHeaderInset ? mobileHeaderClass : desktopHeaderClass}>
+      <button className={headerIconButtonClass} type="button" aria-label="AI 대화 목록" onClick={props.onOpenChatList}>
+        <ChevronLeft className="h-4 w-4" aria-hidden="true" />
       </button>
-      <form className="active-chat-toolbar" onSubmit={props.onSubmitChatTitle}>
-        <div className="active-chat-name-field">
-          <input
-            value={props.chatTitleDraft}
-            onChange={(event) => props.onChatTitleChange(event.target.value)}
-            aria-label="현재 대화 이름"
-            placeholder="대화 이름"
-          />
-        </div>
+      <form className="grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2" onSubmit={props.onSubmitChatTitle}>
+        <input
+          className="h-9 min-w-0 rounded border border-[var(--line)] bg-[var(--surface)] px-3 text-sm font-bold text-[var(--text)] outline-none focus:border-[rgba(31,193,182,0.65)] focus:ring-4 focus:ring-[rgba(31,193,182,0.12)]"
+          value={props.chatTitleDraft}
+          onChange={(event) => props.onChatTitleChange(event.target.value)}
+          aria-label="현재 대화 이름"
+          placeholder="대화 이름"
+        />
         <button
-          className="icon-button header-icon-button"
+          className={headerIconButtonClass}
           type="submit"
           aria-label="대화 이름 저장"
           disabled={props.isChatTitleSaving || !title || titleUnchanged}
         >
-          <Save size={15} />
+          <Save className="h-[15px] w-[15px]" aria-hidden="true" />
         </button>
         <button
-          className={props.isChatMarkdownCopied ? "icon-button header-icon-button copied" : "icon-button header-icon-button"}
+          className={props.isChatMarkdownCopied ? copiedIconButtonClass : headerIconButtonClass}
           type="button"
           aria-label={props.isChatMarkdownCopied ? "대화 내용 복사됨" : "대화 내용 전체 복사"}
           onClick={props.onCopyActiveChat}
         >
-          <Copy size={15} />
+          <Copy className="h-[15px] w-[15px]" aria-hidden="true" />
         </button>
       </form>
       {!props.hideActiveHeaderActions ? (
@@ -105,19 +111,19 @@ function ChatHeaderActions(
   props: Pick<ChatPanelHeaderProps, "hideCollapseButton" | "isChatSessionCreating" | "isChatSessionsLoading" | "mobileHeaderAction" | "onCreateChatSession" | "onToggleChat">
 ) {
   return (
-    <div className="chat-header-actions">
+    <div className="flex shrink-0 items-center gap-2">
       <button
-        className="icon-button header-icon-button"
+        className={headerIconButtonClass}
         type="button"
         aria-label="새 대화"
         disabled={props.isChatSessionCreating || props.isChatSessionsLoading}
         onClick={props.onCreateChatSession}
       >
-        <Plus size={17} />
+        <Plus className="h-[17px] w-[17px]" aria-hidden="true" />
       </button>
       {!props.hideCollapseButton ? (
-        <button className="icon-button header-icon-button" type="button" aria-label="일정 조율 접기" onClick={props.onToggleChat}>
-          <PanelRightClose size={17} />
+        <button className={headerIconButtonClass} type="button" aria-label="일정 조율 접기" onClick={props.onToggleChat}>
+          <PanelRightClose className="h-[17px] w-[17px]" aria-hidden="true" />
         </button>
       ) : null}
       {props.mobileHeaderAction}

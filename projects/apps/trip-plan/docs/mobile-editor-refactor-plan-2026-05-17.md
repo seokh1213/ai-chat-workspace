@@ -67,6 +67,11 @@
 - 2026-05-17: Replaced numbered CSS chunks with scoped style folders: `global`, `common`, `workspace`, `setup`, `editor`, `map`, `chat`, and `responsive`. `src/styles.css` is now only Tailwind plus scoped imports, and every CSS file is below 400 lines.
 - 2026-05-17: Added Tailwind-first mobile itinerary/place sections and mobile edit forms, so the mobile schedule list no longer depends on desktop sidebar CSS or the old mobile responsive overrides.
 - 2026-05-17: Converted trip metadata editing controls to Tailwind-first sizing; mobile date inputs now stack on narrow widths and keep a 44px touch target.
+- 2026-05-17: Added `EditorChatPanel` as a shared chat adapter so desktop and mobile editor shells no longer duplicate the long `ChatPanel` prop wiring.
+- 2026-05-17: Split the editor chat contract into `EditorChatProps`; `EditorChatPanel` no longer receives the whole `EditorScreenProps` or the whole editor state.
+- 2026-05-17: Moved chat pending status and operation preview styling to Tailwind utilities, then removed the matching legacy selectors from `chat/messages.css`.
+- 2026-05-17: Added shared mobile modal focus/scroll handling for itinerary/place edit forms with dialog semantics and Escape close support.
+- 2026-05-17: Removed confirmed dead selectors from editor/sidebar, setup, common controls, and map CSS.
 - 2026-05-17: Frontend production build passes after shell split.
 
 ## Verification
@@ -79,5 +84,6 @@
 ## Open Risks
 
 - Legacy CSS is now split under the line-limit harness, but semantic cleanup and deeper Tailwind migration are still staged work.
-- `EditorScreen` has a very wide prop surface; shell extraction should reduce visual complexity before deeper state refactors.
+- `EditorScreenProps` is still wide for itinerary/map responsibilities. Chat is now separated, but planner/map props need the same responsibility-based split.
 - Mobile history currently only tracks `details | map | chat`; chat detail needs clearer stack semantics.
+- Map topbar/day-strip height is still based on fixed positioning. A later pass should replace the fixed top offset with an explicit layout row or measured CSS variable.
