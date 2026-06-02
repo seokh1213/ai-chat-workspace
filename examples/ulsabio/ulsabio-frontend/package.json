@@ -1,0 +1,38 @@
+{
+  "name": "@ulsabio/frontend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev --hostname 127.0.0.1 --port 18100",
+    "build": "next build",
+    "start": "next start --hostname 127.0.0.1 --port 18100",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@ai-sdk/react": "^3.0.0",
+    "@tailwindcss/postcss": "^4.1.0",
+    "ai": "^6.0.0",
+    "class-variance-authority": "latest",
+    "clsx": "latest",
+    "lucide-react": "latest",
+    "next": "^16.1.5",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "react-markdown": "^10.1.0",
+    "remark-breaks": "^4.0.0",
+    "remark-gfm": "^4.0.1",
+    "tailwind-merge": "latest",
+    "tailwindcss": "^4.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "latest",
+    "@types/react": "latest",
+    "@types/react-dom": "latest",
+    "postcss": "latest",
+    "typescript": "latest"
+  },
+  "engines": {
+    "node": ">=20.11.0"
+  }
+}
