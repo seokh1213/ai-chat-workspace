@@ -2,9 +2,9 @@
 
 ## 목적
 
-AI를 쓰지 말자는 문서가 아님. LLM이 만든 기본값을 그대로 받아들였을 때 반복되는 문체, 화면 패턴, 상태 표현을 잡아내고 Ulsabio만의 제품 질감으로 다시 바꾸기 위한 검수 하네스임.
+AI를 쓰지 말자는 문서가 아님. LLM이 만든 기본값을 그대로 받아들였을 때 반복되는 문체, 화면 패턴, 상태 표현을 잡아내고 Olintli만의 제품 질감으로 다시 바꾸기 위한 검수 하네스임.
 
-GeekNews의 `LLM이 만들어낸 "AI 냄새들"` 정리는 글쓰기에서 짧은 명언식 문장, 연속 단문, 고정 은유 문형이 반복되고, 웹사이트에서는 비슷한 mono font, step/list layout, card/button, blinking badge가 반복된다는 관찰에 가깝다. Ulsabio에서는 이 관찰을 디자인 금지령이 아니라 리뷰 규칙으로 사용한다.
+GeekNews의 `LLM이 만들어낸 "AI 냄새들"` 정리는 글쓰기에서 짧은 명언식 문장, 연속 단문, 고정 은유 문형이 반복되고, 웹사이트에서는 비슷한 mono font, step/list layout, card/button, blinking badge가 반복된다는 관찰에 가깝다. Olintli에서는 이 관찰을 디자인 금지령이 아니라 리뷰 규칙으로 사용한다.
 
 참고: https://news.hada.io/topic?id=29997
 
@@ -79,7 +79,7 @@ GeekNews의 `LLM이 만들어낸 "AI 냄새들"` 정리는 글쓰기에서 짧�
 ## Prompt 하네스
 
 ```text
-Ulsabio는 개인형 agent platform이다.
+Olintli는 개인형 agent platform이다.
 화면은 실제 작업 도구처럼 보여야 한다.
 AI 서비스처럼 보이는 장식, purple gradient, glass panel, blinking dot, 의미 없는 AI badge, 과한 hero copy를 쓰지 않는다.
 copy는 짧되 상태와 다음 행동이 명확해야 한다.

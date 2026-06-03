@@ -8,7 +8,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 const geist = Geist({ subsets: ["latin"], variable: "--font-sans" });
 
 export const metadata: Metadata = {
-  title: "Ulsabio Design Lab",
+  title: "Olintli Design Lab",
   description: "Image fidelity and refined production mockups"
 };
 

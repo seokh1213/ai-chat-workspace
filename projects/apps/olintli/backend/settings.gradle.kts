@@ -12,4 +12,4 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "ulsabio-backend"
+rootProject.name = "olintli-backend"

@@ -1,6 +1,6 @@
-# Ulsabio Design System Documents
+# Olintli Design System Documents
 
-Ulsabio는 개인형 agent platform을 채팅 하나로 시작하되, 지속 관리가 필요한 일은 workspace와 tool surface로 승격시키는 제품이다. 이 폴더는 실제 구현 전에 디자인 의사결정, UI 아키텍처, AI 생성물 검수 기준을 고정하기 위한 문서 묶음이다.
+Olintli는 개인형 agent platform을 채팅 하나로 시작하되, 지속 관리가 필요한 일은 workspace와 tool surface로 승격시키는 제품이다. 이 폴더는 실제 구현 전에 디자인 의사결정, UI 아키텍처, AI 생성물 검수 기준을 고정하기 위한 문서 묶음이다.
 
 ## 문서 목록
 
@@ -11,4 +11,4 @@ Ulsabio는 개인형 agent platform을 채팅 하나로 시작하되, 지속 관
 
 ## 연결 프로젝트
 
-- [examples/ulsabio](../../examples/ulsabio): 백엔드, 제품 프론트, 디자인 샘플 프론트 골격.
+- [projects/apps/olintli](../../projects/apps/olintli): 백엔드, 제품 프론트, 디자인 샘플 프론트 골격.

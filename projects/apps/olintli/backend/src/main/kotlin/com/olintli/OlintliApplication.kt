@@ -1,11 +1,11 @@
-package com.ulsabio
+package com.olintli
 
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
 
 @SpringBootApplication
-class UlsabioApplication
+class OlintliApplication
 
 fun main(args: Array<String>) {
-    runApplication<UlsabioApplication>(*args)
+    runApplication<OlintliApplication>(*args)
 }

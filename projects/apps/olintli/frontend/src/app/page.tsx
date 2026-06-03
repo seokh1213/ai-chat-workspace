@@ -20,7 +20,7 @@ export default function HomePage() {
         <div className="brand-row">
           <div className="brand-mark">U</div>
           <div>
-            <div className="brand-title">Ulsabio</div>
+            <div className="brand-title">Olintli</div>
             <div className="brand-subtitle">Personal orchestrator</div>
           </div>
         </div>

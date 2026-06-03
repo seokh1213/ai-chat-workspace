@@ -2,7 +2,7 @@
 
 ## 배경
 
-Ulsabio는 chat-first 제품이지만 채팅 앱만은 아님. 단발 질문은 채팅 안에서 끝나고, 누적되는 일은 workspace로 승격되며, agent와 tool은 사용자가 직접 조립하고 관리한다. 디자인 시스템의 목적은 이 다양한 화면을 하나의 제품처럼 보이게 하면서도, 흔한 AI 생성 웹사이트의 반복 패턴을 피하는 것임.
+Olintli는 chat-first 제품이지만 채팅 앱만은 아님. 단발 질문은 채팅 안에서 끝나고, 누적되는 일은 workspace로 승격되며, agent와 tool은 사용자가 직접 조립하고 관리한다. 디자인 시스템의 목적은 이 다양한 화면을 하나의 제품처럼 보이게 하면서도, 흔한 AI 생성 웹사이트의 반복 패턴을 피하는 것임.
 
 ## 목표
 
@@ -57,7 +57,7 @@ Ulsabio는 chat-first 제품이지만 채팅 앱만은 아님. 단발 질문은 
 
 ## Trip-plan 참고 결과
 
-기존 `projects/apps/trip-plan/frontend`는 Vite + React 19 + Tailwind v4 기반이고 shadcn을 쓰지 않는다. 디자인 시스템은 `styles/global/tokens.css`와 여러 CSS module-style 파일을 직접 조합하는 방식이다. 신규 Ulsabio는 trip-plan의 여행 UX와 상태 흐름만 참고하고, UI 기반은 Next + shadcn + AI Elements로 새로 간다.
+기존 `projects/apps/trip-plan/frontend`는 Vite + React 19 + Tailwind v4 기반이고 shadcn을 쓰지 않는다. 디자인 시스템은 `styles/global/tokens.css`와 여러 CSS module-style 파일을 직접 조합하는 방식이다. 신규 Olintli는 trip-plan의 여행 UX와 상태 흐름만 참고하고, UI 기반은 Next + shadcn + AI Elements로 새로 간다.
 
 ## Token Model
 

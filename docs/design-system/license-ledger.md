@@ -2,7 +2,7 @@
 
 ## 목적
 
-Ulsabio의 UI stack은 상업 사용 가능한 오픈소스 중심으로 시작한다. 새 dependency를 추가할 때마다 이 문서에 목적, 라이선스, 사용 범위, 주의사항을 남긴다.
+Olintli의 UI stack은 상업 사용 가능한 오픈소스 중심으로 시작한다. 새 dependency를 추가할 때마다 이 문서에 목적, 라이선스, 사용 범위, 주의사항을 남긴다.
 
 ## Frontend Candidates
 

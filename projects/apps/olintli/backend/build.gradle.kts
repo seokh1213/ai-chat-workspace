@@ -5,7 +5,7 @@ plugins {
     id("io.spring.dependency-management") version "1.1.7"
 }
 
-group = "com.ulsabio"
+group = "com.olintli"
 version = "0.1.0-SNAPSHOT"
 
 java {

@@ -2,22 +2,22 @@
 
 ## 목적
 
-Ulsabio UI는 하나의 채팅창에 모든 기능을 욱여넣는 구조가 아님. 채팅은 control tower이고, 지속 관리가 필요한 일은 workspace, tool, agent, artifact 화면으로 이동한다. 사용자는 어디서 시작하든 같은 객체와 같은 실행 이력을 다시 볼 수 있어야 한다.
+Olintli UI는 하나의 채팅창에 모든 기능을 욱여넣는 구조가 아님. 채팅은 control tower이고, 지속 관리가 필요한 일은 workspace, tool, agent, artifact 화면으로 이동한다. 사용자는 어디서 시작하든 같은 객체와 같은 실행 이력을 다시 볼 수 있어야 한다.
 
 ## Project Layout
 
 ```text
-examples/ulsabio
-├── ulsabio-backend
-├── ulsabio-frontend
-└── ulsabio-frontend-design
+projects/apps/olintli
+├── backend
+├── frontend
+└── frontend-design
 ```
 
 | 프로젝트 | 역할 |
 |---|---|
-| `ulsabio-backend` | Kotlin/Spring 기반 orchestrator API, workspace/tool/agent/run 상태 관리 |
-| `ulsabio-frontend` | 실제 제품 프론트, 인증·데이터·streaming·workspace 연결 |
-| `ulsabio-frontend-design` | 디자인 샘플 전용 프론트, mock data로 image/refined 버전 비교 |
+| `backend` | Kotlin/Spring 기반 orchestrator API, workspace/tool/agent/run 상태 관리 |
+| `frontend` | 실제 제품 프론트, 인증·데이터·streaming·workspace 연결 |
+| `frontend-design` | 디자인 샘플 전용 프론트, mock data로 image/refined 버전 비교 |
 
 ## Runtime Boundary
 
@@ -144,7 +144,7 @@ Settings는 단순 preference 화면이 아니라 실행 인프라 관리 화면
 
 ## Design App Policy
 
-`ulsabio-frontend-design`은 mock data만 사용한다. 실제 API 연결, 인증, secret, provider key 입력은 금지한다. 같은 화면을 두 트랙으로 보여준다.
+`frontend-design`은 mock data만 사용한다. 실제 API 연결, 인증, secret, provider key 입력은 금지한다. 같은 화면을 두 트랙으로 보여준다.
 
 | Track | 구현 방식 |
 |---|---|
