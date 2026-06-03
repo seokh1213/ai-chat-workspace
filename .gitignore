@@ -12,3 +12,6 @@ build/
 *.sqlite-shm
 *.sqlite-wal
 *.tsbuildinfo
+
+firma/
+Vibe-Trading/
