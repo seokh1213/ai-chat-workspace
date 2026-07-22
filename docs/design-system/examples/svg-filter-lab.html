@@ -1,0 +1,842 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SVG Filter Lab</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #090b12;
+      color: #f4f7ff;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-width: 320px;
+      background:
+        radial-gradient(circle at 15% 0%, #20305b 0, transparent 32rem),
+        #090b12;
+    }
+
+    header,
+    main {
+      width: min(1120px, calc(100% - 32px));
+      margin: 0 auto;
+    }
+
+    header {
+      padding: 64px 0 32px;
+    }
+
+    h1,
+    h2,
+    p {
+      margin-top: 0;
+    }
+
+    h1 {
+      margin-bottom: 12px;
+      font-size: clamp(2rem, 6vw, 4.5rem);
+      letter-spacing: -0.05em;
+    }
+
+    header p,
+    .description {
+      color: #b6bfd5;
+      line-height: 1.65;
+    }
+
+    main {
+      display: grid;
+      gap: 24px;
+      padding-bottom: 72px;
+    }
+
+    .demo {
+      overflow: hidden;
+      border: 1px solid #29314a;
+      border-radius: 24px;
+      background: rgba(16, 20, 34, 0.92);
+      box-shadow: 0 24px 80px rgba(0, 0, 0, 0.28);
+    }
+
+    .demo-copy {
+      padding: 28px 28px 16px;
+    }
+
+    .demo-copy h2 {
+      margin-bottom: 8px;
+      font-size: clamp(1.35rem, 3vw, 2rem);
+    }
+
+    .preview {
+      display: grid;
+      min-height: 320px;
+      place-items: center;
+      padding: 24px;
+      background: #0d1020;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 16px;
+      padding: 20px 28px 28px;
+    }
+
+    label {
+      display: grid;
+      gap: 8px;
+      color: #dce3f7;
+      font-size: 0.9rem;
+    }
+
+    input,
+    select,
+    button {
+      font: inherit;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: #79f2ce;
+    }
+
+    input[type="color"] {
+      width: 100%;
+      min-height: 42px;
+      border: 1px solid #414b68;
+      border-radius: 10px;
+      background: #171c2d;
+    }
+
+    select,
+    button {
+      min-height: 42px;
+      border: 1px solid #414b68;
+      border-radius: 10px;
+      background: #171c2d;
+      color: #f4f7ff;
+    }
+
+    button {
+      padding: 0 16px;
+      cursor: pointer;
+    }
+
+    output {
+      color: #79f2ce;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .filter-definitions {
+      position: absolute;
+      width: 0;
+      height: 0;
+      overflow: hidden;
+      pointer-events: none;
+    }
+
+    .gooey-canvas {
+      position: relative;
+      width: min(100%, 560px);
+      height: 260px;
+      overflow: hidden;
+      border-radius: 20px;
+      background:
+        linear-gradient(135deg, rgba(255, 255, 255, 0.08), transparent),
+        #090b17;
+    }
+
+    .gooey-layer {
+      position: absolute;
+      inset: 0;
+      filter: url(#lab-gooey-filter);
+    }
+
+    .gooey-blob {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 104px;
+      height: 104px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #ff4d8d, #ff9d3d);
+      box-shadow: inset 18px 18px 32px rgba(255, 255, 255, 0.16);
+    }
+
+    .gooey-blob:nth-child(1) {
+      transform: translate(calc(-50% - var(--gooey-gap)), -50%);
+    }
+
+    .gooey-blob:nth-child(2) {
+      transform: translate(calc(-50% + var(--gooey-gap)), -50%);
+    }
+
+    .gooey-blob:nth-child(3) {
+      width: 72px;
+      height: 72px;
+      animation: gooey-orbit 4.5s ease-in-out infinite alternate;
+    }
+
+    @keyframes gooey-orbit {
+      from {
+        transform: translate(-180px, -92px);
+      }
+      to {
+        transform: translate(90px, 28px);
+      }
+    }
+
+    .svg-preview {
+      width: min(100%, 620px);
+      height: auto;
+      overflow: visible;
+    }
+
+    .signature-path {
+      fill: none;
+      stroke: #61f6ca;
+      stroke-width: 8;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-dasharray: 1;
+      stroke-dashoffset: 1;
+      animation: draw-signature 4.8s cubic-bezier(0.45, 0, 0.25, 1) infinite;
+    }
+
+    @keyframes draw-signature {
+      0%, 8% {
+        stroke-dashoffset: 1;
+        opacity: 0;
+      }
+      12% {
+        opacity: 1;
+      }
+      62%, 84% {
+        stroke-dashoffset: 0;
+        opacity: 1;
+      }
+      100% {
+        stroke-dashoffset: 0;
+        opacity: 0;
+      }
+    }
+
+    .hologram-card {
+      width: min(100%, 360px);
+      border-radius: 24px;
+      transform-style: preserve-3d;
+      transition: transform 140ms ease-out;
+      will-change: transform;
+      touch-action: none;
+    }
+
+    .hologram-svg {
+      display: block;
+      width: 100%;
+      height: auto;
+      border-radius: 24px;
+      box-shadow: 0 28px 70px rgba(0, 0, 0, 0.45);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .gooey-blob:nth-child(3),
+      .signature-path {
+        animation: none;
+      }
+
+      .signature-path {
+        stroke-dashoffset: 0;
+      }
+
+      .hologram-card {
+        transition: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <svg class="filter-definitions" aria-hidden="true" focusable="false">
+    <defs>
+      <filter
+        id="lab-gooey-filter"
+        x="-35%"
+        y="-60%"
+        width="170%"
+        height="220%"
+        color-interpolation-filters="sRGB"
+      >
+        <feGaussianBlur
+          id="lab-gooey-blur"
+          in="SourceGraphic"
+          stdDeviation="11"
+          result="lab-gooey-blurred"
+        />
+        <feColorMatrix
+          id="lab-gooey-matrix"
+          in="lab-gooey-blurred"
+          type="matrix"
+          values="
+            1 0 0 0 0
+            0 1 0 0 0
+            0 0 1 0 0
+            0 0 0 20 -9
+          "
+          result="lab-gooey-alpha"
+        />
+        <feComposite
+          in="SourceGraphic"
+          in2="lab-gooey-alpha"
+          operator="atop"
+        />
+      </filter>
+    </defs>
+  </svg>
+
+  <header>
+    <h1>SVG Filter Lab</h1>
+    <p>각 입력값을 움직이면서 primitive가 픽셀을 어떻게 바꾸는지 확인해 보십시오.</p>
+  </header>
+
+  <main>
+    <section class="demo" aria-labelledby="gooey-heading">
+      <div class="demo-copy">
+        <h2 id="gooey-heading">1. Gooey: blur와 alpha threshold</h2>
+        <p class="description">블러로 도형 사이를 연결한 뒤 알파 대비를 높여 경계를 다시 선명하게 만듭니다.</p>
+      </div>
+      <div class="preview">
+        <div class="gooey-canvas">
+          <div id="gooey-layer" class="gooey-layer" style="--gooey-gap: 74px">
+            <span class="gooey-blob"></span>
+            <span class="gooey-blob"></span>
+            <span class="gooey-blob"></span>
+          </div>
+        </div>
+      </div>
+      <div class="controls">
+        <label>
+          도형 간격 <output id="gooey-gap-output">74px</output>
+          <input id="gooey-gap" type="range" min="30" max="130" value="74">
+        </label>
+        <label>
+          블러 <output id="gooey-blur-output">11</output>
+          <input id="gooey-blur" type="range" min="0" max="20" step="0.5" value="11">
+        </label>
+        <label>
+          알파 절편 <output id="gooey-threshold-output">-9</output>
+          <input id="gooey-threshold" type="range" min="3" max="15" step="0.5" value="9">
+        </label>
+      </div>
+    </section>
+
+    <section class="demo" aria-labelledby="wobble-heading">
+      <div class="demo-copy">
+        <h2 id="wobble-heading">2. Wobble: turbulence와 displacement</h2>
+        <p class="description">생성한 noise의 R 채널과 G 채널을 각각 X축과 Y축 이동량으로 사용합니다.</p>
+      </div>
+      <div class="preview">
+        <svg class="svg-preview" viewBox="0 0 640 300" role="img" aria-labelledby="wobble-title wobble-description">
+          <title id="wobble-title">Noise displacement demo</title>
+          <desc id="wobble-description">색상 카드와 글자가 유기적으로 흔들립니다.</desc>
+          <defs>
+            <linearGradient id="lab-wobble-gradient" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stop-color="#6e5cff" />
+              <stop offset="0.55" stop-color="#36d4ff" />
+              <stop offset="1" stop-color="#6effb5" />
+            </linearGradient>
+            <filter
+              id="lab-wobble-filter"
+              x="-20%"
+              y="-35%"
+              width="140%"
+              height="170%"
+              color-interpolation-filters="sRGB"
+            >
+              <feTurbulence
+                id="lab-wobble-noise"
+                type="fractalNoise"
+                baseFrequency="0.018 0.032"
+                numOctaves="2"
+                seed="2"
+                result="lab-wobble-noise-result"
+              />
+              <feDisplacementMap
+                id="lab-wobble-displacement"
+                in="SourceGraphic"
+                in2="lab-wobble-noise-result"
+                scale="18"
+                xChannelSelector="R"
+                yChannelSelector="G"
+              />
+            </filter>
+          </defs>
+          <rect x="46" y="46" width="548" height="208" rx="48" fill="url(#lab-wobble-gradient)" filter="url(#lab-wobble-filter)" />
+          <text
+            x="320"
+            y="177"
+            text-anchor="middle"
+            fill="#07111f"
+            font-size="68"
+            font-weight="850"
+            letter-spacing="-3"
+            filter="url(#lab-wobble-filter)"
+          >WOBBLE</text>
+        </svg>
+      </div>
+      <div class="controls">
+        <label>
+          Noise 주파수 <output id="wobble-frequency-output">0.018</output>
+          <input id="wobble-frequency" type="range" min="0.004" max="0.08" step="0.002" value="0.018">
+        </label>
+        <label>
+          이동 크기 <output id="wobble-scale-output">18</output>
+          <input id="wobble-scale" type="range" min="0" max="48" value="18">
+        </label>
+        <button id="wobble-toggle" type="button" aria-pressed="true">애니메이션 정지</button>
+      </div>
+    </section>
+
+    <section class="demo" aria-labelledby="signature-heading">
+      <div class="demo-copy">
+        <h2 id="signature-heading">3. Handwriting: pathLength와 displacement</h2>
+        <p class="description">필기 동작은 stroke dash가 만들고 필터는 선의 가장자리에 미세한 불규칙성을 더합니다.</p>
+      </div>
+      <div class="preview">
+        <svg class="svg-preview" viewBox="0 0 700 260" role="img" aria-labelledby="signature-title signature-description">
+          <title id="signature-title">Animated handwritten line</title>
+          <desc id="signature-description">청록색 선이 왼쪽부터 서명처럼 그려집니다.</desc>
+          <defs>
+            <filter
+              id="lab-signature-filter"
+              x="-12%"
+              y="-30%"
+              width="124%"
+              height="160%"
+              color-interpolation-filters="sRGB"
+            >
+              <feTurbulence
+                type="fractalNoise"
+                baseFrequency="0.022 0.08"
+                numOctaves="2"
+                seed="8"
+                result="lab-signature-noise"
+              />
+              <feDisplacementMap
+                in="SourceGraphic"
+                in2="lab-signature-noise"
+                scale="1.8"
+                xChannelSelector="R"
+                yChannelSelector="G"
+                result="lab-signature-distorted"
+              />
+              <feGaussianBlur
+                in="lab-signature-distorted"
+                stdDeviation="0.28"
+                result="lab-signature-soft"
+              />
+              <feMerge>
+                <feMergeNode in="lab-signature-soft" />
+                <feMergeNode in="lab-signature-distorted" />
+              </feMerge>
+            </filter>
+          </defs>
+          <rect x="20" y="20" width="660" height="220" rx="24" fill="#071612" />
+          <path
+            id="signature-path"
+            class="signature-path"
+            pathLength="1"
+            filter="url(#lab-signature-filter)"
+            d="M 74 156 C 92 60 132 54 142 112 C 150 166 105 193 126 116 C 145 53 178 68 178 128 C 178 174 202 176 219 121 C 235 68 261 66 257 130 C 254 180 287 175 304 118 C 321 62 347 72 338 140 C 332 187 369 169 388 113 C 405 62 433 76 423 137 C 414 189 456 172 477 114 C 496 62 520 80 515 139 C 511 180 550 178 581 120 C 602 80 622 83 635 110"
+          />
+        </svg>
+      </div>
+      <div class="controls">
+        <button id="signature-replay" type="button">필기 다시 재생</button>
+      </div>
+    </section>
+
+    <section class="demo" aria-labelledby="neon-heading">
+      <div class="demo-copy">
+        <h2 id="neon-heading">4. Neon: flood, composite, merge</h2>
+        <p class="description">원본 알파를 넓게 블러하고 단색 flood를 잘라낸 뒤 원본과 순서대로 쌓습니다.</p>
+      </div>
+      <div class="preview">
+        <svg class="svg-preview" viewBox="0 0 700 280" role="img" aria-labelledby="neon-title neon-description">
+          <title id="neon-title">Layered neon glow</title>
+          <desc id="neon-description">보라색 발광이 여러 겹으로 번지는 SVG FILTER 글자입니다.</desc>
+          <defs>
+            <filter
+              id="lab-neon-filter"
+              x="-45%"
+              y="-100%"
+              width="190%"
+              height="300%"
+              color-interpolation-filters="sRGB"
+            >
+              <feGaussianBlur id="lab-neon-wide-blur" in="SourceGraphic" stdDeviation="13" result="lab-neon-wide-alpha" />
+              <feFlood id="lab-neon-wide-color" flood-color="#8c5cff" flood-opacity="0.85" result="lab-neon-wide-paint" />
+              <feComposite in="lab-neon-wide-paint" in2="lab-neon-wide-alpha" operator="in" result="lab-neon-wide-glow" />
+              <feGaussianBlur id="lab-neon-near-blur" in="SourceGraphic" stdDeviation="4" result="lab-neon-near-alpha" />
+              <feFlood id="lab-neon-near-color" flood-color="#d8c7ff" result="lab-neon-near-paint" />
+              <feComposite in="lab-neon-near-paint" in2="lab-neon-near-alpha" operator="in" result="lab-neon-near-glow" />
+              <feMerge>
+                <feMergeNode in="lab-neon-wide-glow" />
+                <feMergeNode in="lab-neon-near-glow" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+          </defs>
+          <rect x="16" y="16" width="668" height="248" rx="30" fill="#05020c" stroke="#271841" />
+          <text
+            id="neon-text"
+            x="350"
+            y="165"
+            text-anchor="middle"
+            fill="#ffffff"
+            stroke="#cbb8ff"
+            stroke-width="2"
+            font-size="72"
+            font-weight="800"
+            letter-spacing="4"
+            filter="url(#lab-neon-filter)"
+          >SVG FILTER</text>
+        </svg>
+      </div>
+      <div class="controls">
+        <label>
+          발광 색상
+          <input id="neon-color" type="color" value="#8c5cff">
+        </label>
+        <label>
+          넓은 발광 <output id="neon-spread-output">13</output>
+          <input id="neon-spread" type="range" min="2" max="24" step="0.5" value="13">
+        </label>
+      </div>
+    </section>
+
+    <section class="demo" aria-labelledby="duotone-heading">
+      <div class="demo-copy">
+        <h2 id="duotone-heading">5. Duotone: luminance와 component transfer</h2>
+        <p class="description">먼저 RGB를 밝기값으로 통일하고 각 채널을 어두운 색과 밝은 색 사이로 다시 매핑합니다.</p>
+      </div>
+      <div class="preview">
+        <svg class="svg-preview" viewBox="0 0 700 360" role="img" aria-labelledby="duotone-title duotone-description">
+          <title id="duotone-title">Duotone landscape</title>
+          <desc id="duotone-description">산과 태양으로 구성된 풍경이 두 색상 팔레트로 변환됩니다.</desc>
+          <defs>
+            <linearGradient id="lab-landscape-sky" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#e9f5ff" />
+              <stop offset="1" stop-color="#405a79" />
+            </linearGradient>
+            <filter id="lab-duotone-filter" color-interpolation-filters="sRGB">
+              <feColorMatrix
+                in="SourceGraphic"
+                type="matrix"
+                values="
+                  0.2126 0.7152 0.0722 0 0
+                  0.2126 0.7152 0.0722 0 0
+                  0.2126 0.7152 0.0722 0 0
+                  0      0      0      1 0
+                "
+                result="lab-duotone-luminance"
+              />
+              <feComponentTransfer in="lab-duotone-luminance">
+                <feFuncR id="lab-duotone-red" type="table" tableValues="0.05 1" />
+                <feFuncG id="lab-duotone-green" type="table" tableValues="0.02 0.75" />
+                <feFuncB id="lab-duotone-blue" type="table" tableValues="0.18 0.35" />
+              </feComponentTransfer>
+            </filter>
+          </defs>
+          <g filter="url(#lab-duotone-filter)">
+            <rect x="20" y="20" width="660" height="320" rx="28" fill="url(#lab-landscape-sky)" />
+            <circle cx="535" cy="100" r="54" fill="#ffffff" />
+            <path d="M 20 300 L 170 134 L 285 250 L 400 92 L 680 300 Z" fill="#263b55" />
+            <path d="M 20 300 L 220 192 L 330 278 L 470 177 L 680 300 Z" fill="#6f8497" />
+            <path d="M 20 300 C 150 260 245 340 365 292 C 470 250 555 315 680 275 L 680 340 L 20 340 Z" fill="#101923" />
+          </g>
+        </svg>
+      </div>
+      <div class="controls">
+        <label>
+          팔레트
+          <select id="duotone-palette">
+            <option value="violet">Violet sunset</option>
+            <option value="ocean">Deep ocean</option>
+            <option value="forest">Forest mint</option>
+            <option value="mono">Warm mono</option>
+          </select>
+        </label>
+      </div>
+    </section>
+
+    <section class="demo" aria-labelledby="hologram-heading">
+      <div class="demo-copy">
+        <h2 id="hologram-heading">6. Bonus: filter가 아닌 hologram</h2>
+        <p class="description">포인터 위치를 카드 회전과 gradient 이동에 함께 사용합니다. 빛 영역은 mask로 제한하고 screen blend로 합성합니다.</p>
+      </div>
+      <div class="preview">
+        <div id="hologram-card" class="hologram-card">
+          <svg class="hologram-svg" viewBox="0 0 360 500" role="img" aria-labelledby="hologram-title hologram-description">
+            <title id="hologram-title">Interactive hologram card</title>
+            <desc id="hologram-description">포인터를 움직이면 카드와 무지개 빛이 함께 움직입니다.</desc>
+            <defs>
+              <linearGradient id="lab-card-background" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="#182b50" />
+                <stop offset="0.55" stop-color="#513768" />
+                <stop offset="1" stop-color="#102638" />
+              </linearGradient>
+              <linearGradient id="lab-hologram-gradient" x1="0" y1="0" x2="1" y2="1" gradientTransform="rotate(42 .5 .5)">
+                <stop offset="0" stop-color="#ff4f9a" />
+                <stop offset="0.2" stop-color="#ffde59" />
+                <stop offset="0.4" stop-color="#5dffbd" />
+                <stop offset="0.6" stop-color="#55b8ff" />
+                <stop offset="0.8" stop-color="#a76cff" />
+                <stop offset="1" stop-color="#ff4f9a" />
+              </linearGradient>
+              <mask id="lab-hologram-mask">
+                <rect width="360" height="500" fill="black" />
+                <circle cx="180" cy="205" r="125" fill="white" />
+                <path d="M 46 408 Q 180 336 314 408 L 314 454 L 46 454 Z" fill="white" />
+                <g fill="white" opacity="0.65">
+                  <circle cx="83" cy="90" r="9" />
+                  <circle cx="288" cy="121" r="14" />
+                  <circle cx="65" cy="333" r="7" />
+                  <circle cx="299" cy="327" r="10" />
+                </g>
+              </mask>
+            </defs>
+            <rect width="360" height="500" rx="28" fill="url(#lab-card-background)" />
+            <rect x="15" y="15" width="330" height="470" rx="20" fill="none" stroke="#dce8ff" stroke-opacity="0.45" />
+            <circle cx="180" cy="205" r="118" fill="#0d1427" stroke="#90b5d5" stroke-width="2" />
+            <path d="M 112 242 C 125 145 158 119 180 168 C 202 119 235 145 248 242 C 218 276 142 276 112 242 Z" fill="#e6f2ff" />
+            <circle cx="151" cy="201" r="10" fill="#172038" />
+            <circle cx="209" cy="201" r="10" fill="#172038" />
+            <path d="M 156 230 Q 180 246 204 230" fill="none" stroke="#172038" stroke-width="7" stroke-linecap="round" />
+            <text x="180" y="398" text-anchor="middle" fill="#ffffff" font-size="31" font-weight="800" letter-spacing="4">SPECTRUM</text>
+            <text x="180" y="432" text-anchor="middle" fill="#b7c9e7" font-size="14" letter-spacing="3">INTERACTIVE CARD</text>
+            <rect
+              width="360"
+              height="500"
+              rx="28"
+              fill="url(#lab-hologram-gradient)"
+              mask="url(#lab-hologram-mask)"
+              opacity="0.72"
+              style="mix-blend-mode: screen"
+            />
+          </svg>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const gooeyLayer = document.getElementById("gooey-layer");
+    const gooeyGapInput = document.getElementById("gooey-gap");
+    const gooeyBlurInput = document.getElementById("gooey-blur");
+    const gooeyThresholdInput = document.getElementById("gooey-threshold");
+    const gooeyGapOutput = document.getElementById("gooey-gap-output");
+    const gooeyBlurOutput = document.getElementById("gooey-blur-output");
+    const gooeyThresholdOutput = document.getElementById("gooey-threshold-output");
+    const gooeyBlurPrimitive = document.getElementById("lab-gooey-blur");
+    const gooeyMatrixPrimitive = document.getElementById("lab-gooey-matrix");
+
+    function updateGooeyDemo() {
+      const gapPixels = Number(gooeyGapInput.value);
+      const blurDeviation = Number(gooeyBlurInput.value);
+      const alphaIntercept = Number(gooeyThresholdInput.value);
+      const matrixValues = `
+        1 0 0 0 0
+        0 1 0 0 0
+        0 0 1 0 0
+        0 0 0 20 ${-alphaIntercept}
+      `;
+
+      gooeyLayer.style.setProperty("--gooey-gap", `${gapPixels}px`);
+      gooeyBlurPrimitive.setAttribute("stdDeviation", String(blurDeviation));
+      gooeyMatrixPrimitive.setAttribute("values", matrixValues);
+      gooeyGapOutput.value = `${gapPixels}px`;
+      gooeyBlurOutput.value = String(blurDeviation);
+      gooeyThresholdOutput.value = String(-alphaIntercept);
+    }
+
+    for (const inputElement of [gooeyGapInput, gooeyBlurInput, gooeyThresholdInput]) {
+      inputElement.addEventListener("input", updateGooeyDemo);
+    }
+
+    updateGooeyDemo();
+
+    const wobbleFrequencyInput = document.getElementById("wobble-frequency");
+    const wobbleScaleInput = document.getElementById("wobble-scale");
+    const wobbleFrequencyOutput = document.getElementById("wobble-frequency-output");
+    const wobbleScaleOutput = document.getElementById("wobble-scale-output");
+    const wobbleToggleButton = document.getElementById("wobble-toggle");
+    const wobbleNoisePrimitive = document.getElementById("lab-wobble-noise");
+    const wobbleDisplacementPrimitive = document.getElementById("lab-wobble-displacement");
+    const reducedMotionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    let wobbleAnimationEnabled = !reducedMotionQuery.matches;
+    let previousSeedFrame = -1;
+
+    function updateWobbleParameters() {
+      const baseFrequency = Number(wobbleFrequencyInput.value);
+      const verticalFrequency = baseFrequency * 1.8;
+      const displacementScale = Number(wobbleScaleInput.value);
+
+      wobbleNoisePrimitive.setAttribute("baseFrequency", `${baseFrequency} ${verticalFrequency}`);
+      wobbleDisplacementPrimitive.setAttribute("scale", String(displacementScale));
+      wobbleFrequencyOutput.value = baseFrequency.toFixed(3);
+      wobbleScaleOutput.value = String(displacementScale);
+    }
+
+    function syncWobbleButton() {
+      wobbleToggleButton.setAttribute("aria-pressed", String(wobbleAnimationEnabled));
+      wobbleToggleButton.textContent = wobbleAnimationEnabled ? "애니메이션 정지" : "애니메이션 재생";
+    }
+
+    function animateWobble(timestamp) {
+      if (wobbleAnimationEnabled && !document.hidden) {
+        const seedFrame = Math.floor(timestamp / 120);
+        if (seedFrame !== previousSeedFrame) {
+          const nextSeed = 1 + seedFrame % 11;
+          wobbleNoisePrimitive.setAttribute("seed", String(nextSeed));
+          previousSeedFrame = seedFrame;
+        }
+      }
+      requestAnimationFrame(animateWobble);
+    }
+
+    wobbleFrequencyInput.addEventListener("input", updateWobbleParameters);
+    wobbleScaleInput.addEventListener("input", updateWobbleParameters);
+    wobbleToggleButton.addEventListener("click", () => {
+      wobbleAnimationEnabled = !wobbleAnimationEnabled;
+      syncWobbleButton();
+    });
+    reducedMotionQuery.addEventListener("change", motionEvent => {
+      wobbleAnimationEnabled = !motionEvent.matches;
+      syncWobbleButton();
+    });
+
+    updateWobbleParameters();
+    syncWobbleButton();
+    requestAnimationFrame(animateWobble);
+
+    const signaturePath = document.getElementById("signature-path");
+    const signatureReplayButton = document.getElementById("signature-replay");
+
+    signatureReplayButton.addEventListener("click", () => {
+      for (const signatureAnimation of signaturePath.getAnimations()) {
+        signatureAnimation.cancel();
+        signatureAnimation.play();
+      }
+    });
+
+    const neonColorInput = document.getElementById("neon-color");
+    const neonSpreadInput = document.getElementById("neon-spread");
+    const neonSpreadOutput = document.getElementById("neon-spread-output");
+    const neonWideBlur = document.getElementById("lab-neon-wide-blur");
+    const neonNearBlur = document.getElementById("lab-neon-near-blur");
+    const neonWideColor = document.getElementById("lab-neon-wide-color");
+    const neonNearColor = document.getElementById("lab-neon-near-color");
+    const neonText = document.getElementById("neon-text");
+
+    function mixHexWithWhite(hexColor, whiteRatio) {
+      const normalizedHex = hexColor.replace("#", "");
+      const redChannel = Number.parseInt(normalizedHex.slice(0, 2), 16);
+      const greenChannel = Number.parseInt(normalizedHex.slice(2, 4), 16);
+      const blueChannel = Number.parseInt(normalizedHex.slice(4, 6), 16);
+      const mixChannel = channel => Math.round(channel + (255 - channel) * whiteRatio);
+      const toHex = channel => mixChannel(channel).toString(16).padStart(2, "0");
+      return `#${toHex(redChannel)}${toHex(greenChannel)}${toHex(blueChannel)}`;
+    }
+
+    function updateNeonDemo() {
+      const glowColor = neonColorInput.value;
+      const nearGlowColor = mixHexWithWhite(glowColor, 0.62);
+      const spread = Number(neonSpreadInput.value);
+
+      neonWideColor.setAttribute("flood-color", glowColor);
+      neonNearColor.setAttribute("flood-color", nearGlowColor);
+      neonWideBlur.setAttribute("stdDeviation", String(spread));
+      neonNearBlur.setAttribute("stdDeviation", String(Math.max(1, spread * 0.32)));
+      neonText.setAttribute("stroke", nearGlowColor);
+      neonSpreadOutput.value = String(spread);
+    }
+
+    neonColorInput.addEventListener("input", updateNeonDemo);
+    neonSpreadInput.addEventListener("input", updateNeonDemo);
+    updateNeonDemo();
+
+    const duotonePalettes = {
+      violet: {
+        dark: [0.05, 0.02, 0.18],
+        light: [1, 0.75, 0.35]
+      },
+      ocean: {
+        dark: [0.01, 0.07, 0.16],
+        light: [0.35, 0.95, 0.9]
+      },
+      forest: {
+        dark: [0.02, 0.12, 0.08],
+        light: [0.72, 1, 0.64]
+      },
+      mono: {
+        dark: [0.12, 0.07, 0.04],
+        light: [1, 0.88, 0.68]
+      }
+    };
+
+    const duotonePaletteSelect = document.getElementById("duotone-palette");
+    const duotoneRedFunction = document.getElementById("lab-duotone-red");
+    const duotoneGreenFunction = document.getElementById("lab-duotone-green");
+    const duotoneBlueFunction = document.getElementById("lab-duotone-blue");
+
+    function updateDuotonePalette() {
+      const selectedPalette = duotonePalettes[duotonePaletteSelect.value];
+      const channelFunctions = [duotoneRedFunction, duotoneGreenFunction, duotoneBlueFunction];
+
+      channelFunctions.forEach((channelFunction, channelIndex) => {
+        const darkValue = selectedPalette.dark[channelIndex];
+        const lightValue = selectedPalette.light[channelIndex];
+        channelFunction.setAttribute("tableValues", `${darkValue} ${lightValue}`);
+      });
+    }
+
+    duotonePaletteSelect.addEventListener("change", updateDuotonePalette);
+    updateDuotonePalette();
+
+    const hologramCard = document.getElementById("hologram-card");
+    const hologramGradient = document.getElementById("lab-hologram-gradient");
+
+    function resetHologramCard() {
+      hologramCard.style.transform = "rotateX(0deg) rotateY(0deg)";
+      hologramGradient.setAttribute("gradientTransform", "rotate(42 .5 .5)");
+    }
+
+    hologramCard.addEventListener("pointermove", pointerEvent => {
+      const cardBounds = hologramCard.getBoundingClientRect();
+      const normalizedX = ((pointerEvent.clientX - cardBounds.left) / cardBounds.width) * 2 - 1;
+      const normalizedY = ((pointerEvent.clientY - cardBounds.top) / cardBounds.height) * 2 - 1;
+      const rotateX = normalizedY * -12;
+      const rotateY = normalizedX * 12;
+      const gradientAngle = 42 + normalizedX * 38;
+      const gradientOffsetX = normalizedX * 0.18;
+      const gradientOffsetY = normalizedY * 0.18;
+
+      hologramCard.style.transform = `perspective(900px) rotateX(${rotateX}deg) rotateY(${rotateY}deg)`;
+      hologramGradient.setAttribute(
+        "gradientTransform",
+        `rotate(${gradientAngle} .5 .5) translate(${gradientOffsetX} ${gradientOffsetY})`
+      );
+    });
+
+    hologramCard.addEventListener("pointerleave", resetHologramCard);
+    resetHologramCard();
+  </script>
+</body>
+</html>

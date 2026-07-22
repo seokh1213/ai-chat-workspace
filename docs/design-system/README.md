@@ -8,6 +8,8 @@ Olintli는 개인형 agent platform을 채팅 하나로 시작하되, 지속 관
 - [Design System PRD](./design-system-prd.md): 시각 방향, 토큰, 컴포넌트 범위, 라이브러리 선택, 라이선스 기준.
 - [UI Architecture](./ui-architecture.md): Next 기반 프론트, Kotlin/Spring 백엔드, 디자인 샘플 앱의 경계와 화면 전환 구조.
 - [License Ledger](./license-ledger.md): UI dependency의 상업 사용 가능성, 라이선스, 주의사항 추적.
+- [SVG 필터 실전 가이드](./svg-filters-guide.md): SVG 필터 파이프라인, 동작 예제, 성능·접근성·보안 주의사항.
+- [SVG Filter Lab](./examples/svg-filter-lab.html): 여섯 가지 SVG 필터와 홀로그램 효과를 브라우저에서 직접 조작하는 독립 실행 예제.
 
 ## 연결 프로젝트
 
