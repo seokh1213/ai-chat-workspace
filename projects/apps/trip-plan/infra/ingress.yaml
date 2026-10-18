@@ -10,7 +10,7 @@ spec:
   ingressClassName: tailscale
   defaultBackend:
     service:
-      name: trip-plan-app
+      name: wukong-access-trip-plan
       port:
         number: 80
   tls:
