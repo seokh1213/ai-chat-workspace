@@ -28,6 +28,8 @@ ADD --checksum=sha256:9138eab0f7d230e17163953f015ec9ae2431dbc49069c658b7f991e45b
 RUN mkdir /jre && tar -xzf /tmp/jre.tar.gz -C /jre --strip-components=1
 
 FROM eclipse-temurin:21-jre-alpine
+# The base image lags Alpine security updates (brotli, openssl, sqlite, expat, p11-kit).
+RUN apk upgrade --no-cache
 ENV JAVA_VERSION=jdk-21.0.13+9
 RUN rm -rf /opt/java/openjdk
 COPY --from=jre /jre /opt/java/openjdk
