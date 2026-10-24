@@ -1,12 +1,10 @@
 # Pin the Node2Shell (CVE-2026-111497) fixed release; a bare tag keeps whatever the builder cached.
 FROM node:26.12.1-trixie-slim@sha256:36793bcbb160a6a16cede1e62b93f84e26b78a972a8a4c0b879c1c12f22761ec
 
-# Held at 0.128.0: 0.164.0 refuses a non-loopback --listen without --ws-auth, and
-# CodexAppServerClient sends no token.
-ARG CODEX_VERSION=0.128.0
+ARG CODEX_VERSION=0.164.0
 
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends ca-certificates \
+  && apt-get install -y --no-install-recommends bubblewrap ca-certificates \
   && rm -rf /var/lib/apt/lists/* \
   && npm install -g "@openai/codex@${CODEX_VERSION}" \
   && rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack \
@@ -23,4 +21,6 @@ ENV CODEX_HOME=/ai-chat/.codex
 
 EXPOSE 8765
 
-ENTRYPOINT ["codex", "app-server", "--listen", "ws://0.0.0.0:8765"]
+# A non-loopback listener only starts with auth; mount the token shared with the app at this path.
+ENTRYPOINT ["codex", "app-server", "--listen", "ws://0.0.0.0:8765", \
+  "--ws-auth", "capability-token", "--ws-token-file", "/run/secrets/codex-ws/token"]
