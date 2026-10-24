@@ -53,7 +53,7 @@ spec:
         fsGroup: 1000
       containers:
         - name: codex
-          image: registry.wukong.monster/dev/trip-plan/codex-app-server:0.3.0-sec1@sha256:3852dc5b59208aea00fd281e374fd5de652893477c05985377abf1538197683a
+          image: registry.wukong.monster/dev/trip-plan/codex-app-server:0.4.0-h5@sha256:00f23b1ed60051237a2e93a8c22cf29e0e4e3cd5a823741f2c67fddea558ddd5
           imagePullPolicy: IfNotPresent
           command:
             - codex

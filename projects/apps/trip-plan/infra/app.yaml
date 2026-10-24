@@ -38,7 +38,7 @@ spec:
         fsGroup: 1000
       containers:
         - name: app
-          image: registry.wukong.monster/dev/trip-plan/app:0.3.2-sec1@sha256:d2fefc9101e7cb4a63831978cb4836d5ba24425fb3254537cdc9f1a590babfeb
+          image: registry.wukong.monster/dev/trip-plan/app:0.4.0-h5@sha256:9add2731c28209ef668933d925df80c208dfe8084de39043c6a7ba8ab3cb4627
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
