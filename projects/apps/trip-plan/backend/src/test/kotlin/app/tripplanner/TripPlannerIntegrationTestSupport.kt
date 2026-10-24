@@ -48,7 +48,7 @@ abstract class TripPlannerIntegrationTestSupport {
 
     companion object {
         private val externalDatabaseUrl = System.getenv("TRIP_PLAN_TEST_DATABASE_URL")?.takeIf(String::isNotBlank)
-        private val postgres = externalDatabaseUrl?.let { null } ?: PostgreSQLContainer<Nothing>("postgres:16-alpine").apply {
+        private val postgres = externalDatabaseUrl?.let { null } ?: PostgreSQLContainer<Nothing>("postgres:18-alpine").apply {
             withDatabaseName(TestDatabaseName)
             withUsername(TestDatabaseUsername)
             withPassword(TestDatabasePassword)

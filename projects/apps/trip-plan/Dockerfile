@@ -8,7 +8,7 @@ FROM frontend-deps AS frontend-build
 COPY frontend/ ./
 RUN npm run build
 
-FROM gradle:9.2.1-jdk21-alpine AS backend-build
+FROM gradle:9.8.2-jdk25-alpine@sha256:80143a78c558d1298d392339ea51236bea816131afe2916ef465a76ff2579809 AS backend-build
 WORKDIR /workspace
 COPY --chown=gradle:gradle gradle gradle
 COPY --chown=gradle:gradle gradlew gradlew.bat settings.gradle.kts build.gradle.kts ./
@@ -18,19 +18,19 @@ COPY --from=frontend-build --chown=gradle:gradle /workspace/frontend/node_module
 COPY --from=frontend-build --chown=gradle:gradle /workspace/frontend/dist frontend/dist
 RUN ./gradlew :backend:bootJar --no-daemon -x :backend:frontendInstall -x :backend:frontendBuild
 
-# eclipse-temurin:21-jre-alpine still ships 21.0.12.1 (the running image was 21.0.11), missing the
-# 2026-10 CPU and the CVE-2026-91403 cacerts fix. Overlay Adoptium's 21.0.13+9 musl JRE until the
-# official image catches up. Extract natively; GNU tar can fail in the emulated amd64 stage.
-FROM --platform=$BUILDPLATFORM gradle:9.2.1-jdk21-alpine AS jre
-ADD --checksum=sha256:9138eab0f7d230e17163953f015ec9ae2431dbc49069c658b7f991e45b54fb9b \
-    https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.13%2B9/OpenJDK21U-jre_x64_alpine-linux_hotspot_21.0.13_9.tar.gz \
+# eclipse-temurin:25-jre-alpine still ships 25.0.4.1, missing the 2026-10 CPU. Overlay Adoptium's
+# 25.0.5+8 musl JRE until the official image catches up. Extract natively; GNU tar can fail in the
+# emulated amd64 stage.
+FROM --platform=$BUILDPLATFORM gradle:9.8.2-jdk25-alpine@sha256:80143a78c558d1298d392339ea51236bea816131afe2916ef465a76ff2579809 AS jre
+ADD --checksum=sha256:b46e981318decb77eda728e006c7678a1ac0c56cf81ae3ad245710c2e4fa1a55 \
+    https://github.com/adoptium/temurin25-binaries/releases/download/jdk-25.0.5%2B8/OpenJDK25U-jre_x64_alpine-linux_hotspot_25.0.5_8.tar.gz \
     /tmp/jre.tar.gz
 RUN mkdir /jre && tar -xzf /tmp/jre.tar.gz -C /jre --strip-components=1
 
-FROM eclipse-temurin:21-jre-alpine
+FROM eclipse-temurin:25-jre-alpine@sha256:b7528962e65d43064d8a8b67ba175367896bc948363ea2d3fcd7f10d34e1f048
 # The base image lags Alpine security updates (brotli, openssl, sqlite, expat, p11-kit).
 RUN apk upgrade --no-cache
-ENV JAVA_VERSION=jdk-21.0.13+9
+ENV JAVA_VERSION=jdk-25.0.5+8
 RUN rm -rf /opt/java/openjdk
 COPY --from=jre /jre /opt/java/openjdk
 WORKDIR /app

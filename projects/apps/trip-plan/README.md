@@ -27,9 +27,9 @@ legacy Node prototype은 `projects/apps/trip-plan/legacy-node/`에 보관했습�
 
 목표 스택:
 
-- Kotlin 2.3.20
-- Spring Boot 4.0.5
-- JDK 21
+- Kotlin 2.4.21
+- Spring Boot 4.1.2
+- JDK 25
 - PostgreSQL + Flyway
 - React 19 + Vite + Tailwind CSS 4
 - AI provider는 Kotlin coroutine `Flow` 기반 스트리밍 추상화로 설계
@@ -156,7 +156,7 @@ docker run --rm \
   -v trip-plan-gradle-cache:/home/gradle/.gradle \
   -v /var/run/docker.sock:/var/run/docker.sock \
   -w /workspace \
-  gradle:9.2.1-jdk21-alpine \
+  gradle:9.8.2-jdk25-alpine \
   ./gradlew :backend:test --no-daemon
 
 docker buildx build --platform linux/amd64 --load -t trip-plan/app:local .
