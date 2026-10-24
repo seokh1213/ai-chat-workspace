@@ -38,7 +38,7 @@ spec:
         fsGroup: 1000
       containers:
         - name: app
-          image: registry.wukong.monster/dev/trip-plan/app:0.4.0-h5@sha256:9add2731c28209ef668933d925df80c208dfe8084de39043c6a7ba8ab3cb4627
+          image: registry.wukong.monster/dev/trip-plan/app:0.4.1-h5@sha256:72a5ebbcccaca73c239c4e6ce6b70960e1464889dbabc7515c2ff74e8ebd7446
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
@@ -62,6 +62,8 @@ spec:
               value: "5"
             - name: CODEX_APP_SERVER_URL
               value: ws://trip-plan-codex:8765
+            - name: CODEX_APP_SERVER_TOKEN_FILE
+              value: /run/secrets/codex-ws/token
             - name: TRIP_PLANNER_MODEL_ATTACHMENT_DIR
               value: /model-attachments
             - name: CODEX_APP_SERVER_MANAGED
@@ -98,7 +100,18 @@ spec:
           volumeMounts:
             - name: model-attachments
               mountPath: /model-attachments
+            - name: codex-ws-token
+              mountPath: /run/secrets/codex-ws
+              readOnly: true
       volumes:
         - name: model-attachments
           persistentVolumeClaim:
             claimName: trip-plan-model-attachments
+        - name: codex-ws-token
+          secret:
+            secretName: trip-plan-codex-ws-token
+            optional: true
+            defaultMode: 288 # 0440
+            items:
+              - key: token
+                path: token
