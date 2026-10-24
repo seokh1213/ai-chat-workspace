@@ -37,7 +37,7 @@ codex app-server --listen ws://0.0.0.0:8765
 
 ## Secrets
 
-Before syncing, replace `CHANGE_ME_BEFORE_ARGOCD_SYNC` in `secret.yaml` with an internal password or manage the Secret with your preferred secret manager.
+`trip-plan-secrets` is created on the cluster, never committed: this repository is public. See `DEPLOYMENT_CHECKLIST.md` for the command; rotate it with `ALTER ROLE` in the database and the same key in the Secret.
 
 ## Local Docker Codex Auth Path
 

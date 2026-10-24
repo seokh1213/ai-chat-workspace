@@ -72,7 +72,8 @@ docker exec -it trip-plan-codex codex login status
 
 ## 3. Prepare Secrets
 
-- [ ] Replace `CHANGE_ME_BEFORE_ARGOCD_SYNC` in `infra/secret.yaml`.
+- [ ] Create `trip-plan-secrets` (keys `postgres-db`, `postgres-user`, `postgres-password`) directly on the cluster. It is not stored in Git, because this repository is public:
+  `openssl rand -hex 24 | tr -d '\n' > pw && kubectl -n dev create secret generic trip-plan-secrets --from-literal=postgres-db=trip_plan --from-literal=postgres-user=trip_plan --from-file=postgres-password=pw && rm pw`
 - [ ] If the internal registry requires auth, create or reference an `imagePullSecret`.
 - [ ] Keep Codex auth out of Kubernetes Secret for now; it will be created by manual `codex login` into the PVC mounted at `/ai-chat/.codex`.
 
@@ -137,7 +138,6 @@ https://trip-plan.<tailnet>.ts.net
 
 ## 7. Operational Follow-Ups
 
-- [ ] Move `infra/secret.yaml` to a real secret-management flow before production use.
 - [x] Use Harbor image references under `registry.wukong.monster/dev/trip-plan/...`.
 - [ ] Add backup/restore for the PostgreSQL PVC.
 - [ ] Add backup/restore notes for the Codex auth PVC.
