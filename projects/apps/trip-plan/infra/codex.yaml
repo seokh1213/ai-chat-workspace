@@ -60,6 +60,10 @@ spec:
             - app-server
             - --listen
             - ws://0.0.0.0:8765
+            - --ws-auth
+            - capability-token
+            - --ws-token-file
+            - /run/secrets/codex-ws/token
           env:
             - name: HOME
               value: /ai-chat
@@ -85,6 +89,9 @@ spec:
               mountPath: /ai-chat/.codex
             - name: model-attachments
               mountPath: /model-attachments
+            - name: codex-ws-token
+              mountPath: /run/secrets/codex-ws
+              readOnly: true
       volumes:
         - name: codex-home
           persistentVolumeClaim:
@@ -92,3 +99,10 @@ spec:
         - name: model-attachments
           persistentVolumeClaim:
             claimName: trip-plan-model-attachments
+        - name: codex-ws-token
+          secret:
+            secretName: trip-plan-codex-ws-token
+            defaultMode: 288 # 0440
+            items:
+              - key: token
+                path: token
