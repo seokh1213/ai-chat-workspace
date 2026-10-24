@@ -113,6 +113,7 @@ codex app-server --listen ws://127.0.0.1:8765
 Backend 기본 설정:
 
 - `CODEX_APP_SERVER_URL=ws://127.0.0.1:8765`
+- `CODEX_APP_SERVER_TOKEN_FILE=`
 - `CODEX_APP_SERVER_MODEL=gpt-5.4-mini`
 - `CODEX_APP_SERVER_EFFORT=medium`
 - `CODEX_APP_SERVER_CWD=/tmp`
@@ -126,6 +127,8 @@ Backend 기본 설정:
 - `EXTERNAL_AI_MODE=rest`
 
 `CODEX_APP_SERVER_CWD`는 Codex가 파일 작업을 하지 않는 여행 편집 용도라 `/tmp`로 둡니다. 현재 프로젝트 경로처럼 비 ASCII 문자가 섞인 경로는 일부 Codex turn metadata 헤더에서 문제가 날 수 있어 ASCII 경로를 기본값으로 둡니다.
+
+`CODEX_APP_SERVER_TOKEN_FILE`은 원격 app-server가 `--ws-auth capability-token --ws-token-file`로 같은 토큰을 읽고 있을 때 지정합니다. Backend는 연결할 때마다 파일을 다시 읽어 `Authorization: Bearer <token>`으로 보내고, 파일이 없거나 비어 있으면 헤더 없이 연결합니다.
 
 Spring이 app-server를 같이 띄우는 것은 process lifecycle 관리입니다. 여행별 채팅 세션은 우리 DB의 `chat_sessions`와 Codex thread id 매핑으로 별도 관리하므로, Spring이 미리 띄우는 app-server 프로세스 하나를 여러 채팅 세션이 안전하게 공유합니다.
 

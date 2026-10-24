@@ -35,11 +35,7 @@ class CodexAppServerClient(
         onActivity: (AiProviderActivity) -> Unit = {},
         timeout: Duration = Duration.ofSeconds(properties.timeoutSeconds),
     ): CodexTurnResult {
-        val connection = JsonRpcConnection(
-            url = properties.url,
-            timeout = timeout,
-            objectMapper = objectMapper,
-        )
+        val connection = openConnection(timeout)
 
         connection.use { rpc ->
             var activeThreadId: String? = null
@@ -204,11 +200,7 @@ class CodexAppServerClient(
     }
 
     private fun interruptTurn(threadId: String, turnId: String): Boolean {
-        val connection = JsonRpcConnection(
-            url = properties.url,
-            timeout = Duration.ofSeconds(5),
-            objectMapper = objectMapper,
-        )
+        val connection = openConnection(Duration.ofSeconds(5))
 
         connection.use { rpc ->
             rpc.request(
@@ -225,6 +217,14 @@ class CodexAppServerClient(
         }
         return true
     }
+
+    private fun openConnection(timeout: Duration): JsonRpcConnection =
+        JsonRpcConnection(
+            url = properties.url,
+            authorization = properties.authorizationHeader(),
+            timeout = timeout,
+            objectMapper = objectMapper,
+        )
 
     private fun JsonRpcConnection.startThread(request: AiChatRequest, developerInstructions: String): String {
         val result = request(

@@ -6,8 +6,10 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.WebSocket
+import java.net.http.WebSocketHandshakeException
 import java.time.Duration
 import java.util.concurrent.CompletableFuture
+import java.util.concurrent.ExecutionException
 import java.util.concurrent.LinkedBlockingDeque
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
@@ -15,6 +17,7 @@ import java.util.concurrent.atomic.AtomicReference
 
 internal class JsonRpcConnection(
     url: String,
+    authorization: String?,
     timeout: Duration,
     private val objectMapper: ObjectMapper,
 ) : AutoCloseable {
@@ -25,10 +28,7 @@ internal class JsonRpcConnection(
         .newBuilder()
         .connectTimeout(timeout)
         .build()
-    private val webSocket = client
-        .newWebSocketBuilder()
-        .buildAsync(URI.create(url), listener)
-        .get(remainingMillis(), TimeUnit.MILLISECONDS)
+    private val webSocket = openWebSocket(url, authorization)
     private var nextRequestId = 1
 
     fun request(method: String, params: Any?): JsonNode {
@@ -75,9 +75,26 @@ internal class JsonRpcConnection(
         }
     }
 
+    private fun openWebSocket(url: String, authorization: String?): WebSocket {
+        val builder = client.newWebSocketBuilder()
+        authorization?.let { builder.header("Authorization", it) }
+        return try {
+            builder.buildAsync(URI.create(url), listener).get(remainingMillis(), TimeUnit.MILLISECONDS)
+        } catch (error: ExecutionException) {
+            val handshake = error.cause as? WebSocketHandshakeException ?: throw error
+            // The handshake response still references the request and its Authorization header, so it is not chained.
+            throw IllegalStateException(handshakeRejectedMessage(handshake.response.statusCode()))
+        }
+    }
+
     private fun remainingMillis(): Long {
         return idleTimeoutMillis
     }
+}
+
+private fun handshakeRejectedMessage(status: Int): String {
+    val hint = if (status == 401) " Check CODEX_APP_SERVER_TOKEN_FILE." else ""
+    return "Codex app-server rejected the websocket handshake with HTTP $status.$hint"
 }
 
 private class QueueingWebSocketListener(

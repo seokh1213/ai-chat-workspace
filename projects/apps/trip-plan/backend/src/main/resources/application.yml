@@ -45,6 +45,7 @@ app:
   ai:
     codex-app-server:
       url: ${CODEX_APP_SERVER_URL:ws://127.0.0.1:8765}
+      token-file: ${CODEX_APP_SERVER_TOKEN_FILE:}
       model: ${CODEX_APP_SERVER_MODEL:gpt-5.4-mini}
       effort: ${CODEX_APP_SERVER_EFFORT:medium}
       timeout-seconds: ${CODEX_APP_SERVER_TIMEOUT_SECONDS:180}
