@@ -37,12 +37,16 @@ spec:
     spec:
       containers:
         - name: postgres
-          image: mirror.gcr.io/library/postgres:16.15-alpine@sha256:f4610795587492cd4fb887c2dc3de301b813278bb6f616992061141b5f15ac36
+          image: mirror.gcr.io/library/postgres:18.6-alpine@sha256:898c60cb390d1085bc97bdd6a1ae968757421df394b071848b52b1c09c89d6a5
           imagePullPolicy: IfNotPresent
           ports:
             - name: postgres
               containerPort: 5432
           env:
+            # Postgres 18 lives in a new directory of the same volume; the 16 files beside it
+            # are the rollback copy from the 2026-10-24 dump/restore upgrade.
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pg18
             - name: POSTGRES_USER
               valueFrom:
                 secretKeyRef:
