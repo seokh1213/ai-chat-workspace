@@ -51,6 +51,11 @@ spec:
     spec:
       securityContext:
         fsGroup: 1000
+        runAsNonRoot: true
+        runAsUser: 1001
+        runAsGroup: 1001
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: codex
           image: registry.wukong.monster/dev/trip-plan/codex-app-server:0.4.0-h5@sha256:00f23b1ed60051237a2e93a8c22cf29e0e4e3cd5a823741f2c67fddea558ddd5
@@ -92,6 +97,16 @@ spec:
             - name: codex-ws-token
               mountPath: /run/secrets/codex-ws
               readOnly: true
+            - name: home
+              mountPath: /ai-chat
+            - name: tmp
+              mountPath: /tmp
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
       volumes:
         - name: codex-home
           persistentVolumeClaim:
@@ -106,3 +121,9 @@ spec:
             items:
               - key: token
                 path: token
+        - name: home
+          emptyDir:
+            sizeLimit: 256Mi
+        - name: tmp
+          emptyDir:
+            sizeLimit: 1Gi
