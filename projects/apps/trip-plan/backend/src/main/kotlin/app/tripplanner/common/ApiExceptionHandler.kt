@@ -49,7 +49,7 @@ class ApiExceptionHandler {
     @ExceptionHandler(MaxUploadSizeExceededException::class)
     fun handleMaxUploadSizeExceeded(error: MaxUploadSizeExceededException): ResponseEntity<ErrorResponse> =
         ResponseEntity
-            .status(HttpStatus.PAYLOAD_TOO_LARGE)
+            .status(HttpStatus.CONTENT_TOO_LARGE)
             .body(
                 ErrorResponse(
                     error = "payload_too_large",
