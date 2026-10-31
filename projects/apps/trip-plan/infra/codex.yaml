@@ -58,7 +58,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: codex
-          image: registry.wukong.monster/dev/trip-plan/codex-app-server:0.4.0-h5@sha256:00f23b1ed60051237a2e93a8c22cf29e0e4e3cd5a823741f2c67fddea558ddd5
+          image: registry.wukong.monster/dev/trip-plan/codex-app-server:0.4.0-codex0.166.0@sha256:41976ab0d111bbed989d1f509f9eeab208edb7b138a49d3864dc0ae271f11464
           imagePullPolicy: IfNotPresent
           command:
             - codex
