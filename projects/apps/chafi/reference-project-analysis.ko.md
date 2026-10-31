@@ -11,8 +11,8 @@
 
 로컬 경로:
 
-- `firma`: `/Users/seokh1213/project/web/fullstack/ai-chat-workspace/projects/apps/chafi/firma`
-- `Vibe-Trading`: `/Users/seokh1213/project/web/fullstack/ai-chat-workspace/projects/apps/chafi/Vibe-Trading`
+- `firma`: `/Users/seokh1213/workspace/projects/ai-chat-workspace/projects/apps/chafi/firma`
+- `Vibe-Trading`: `/Users/seokh1213/workspace/projects/ai-chat-workspace/projects/apps/chafi/Vibe-Trading`
 
 분석 시점의 clone 상태:
 
