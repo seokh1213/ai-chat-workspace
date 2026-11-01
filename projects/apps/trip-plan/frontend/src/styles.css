@@ -1,4 +1,17 @@
 @import "tailwindcss";
+
+@theme inline {
+  --text-2xs: 0.625rem;
+  --text-2xs--line-height: 1;
+  --color-app-surface: var(--surface);
+  --color-app-glass: var(--surface-glass);
+  --color-app-secondary: var(--secondary);
+  --color-app-muted: var(--muted);
+  --color-app-day-border: rgba(221, 226, 231, 0.78);
+  --color-app-day-active-border: rgba(31, 193, 182, 0.42);
+  --color-app-day-divider: rgba(107, 114, 128, 0.65);
+}
+
 @import "./styles/global/tokens.css";
 @import "./styles/global/reset.css";
 @import "./styles/common/shells.css";

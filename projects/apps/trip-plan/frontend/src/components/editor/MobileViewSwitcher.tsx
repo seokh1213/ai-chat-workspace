@@ -18,18 +18,49 @@ export function MobileViewSwitcher({
 }: MobileViewSwitcherProps) {
   const [mounted, setMounted] = useState(false);
   const [open, setOpen] = useState(false);
+  const animationFrameRef = useRef<number | null>(null);
+  const closeTimerRef = useRef<number | null>(null);
+  const pendingSelectRef = useRef<(() => void) | null>(null);
   const triggerButtonRef = useRef<HTMLButtonElement | null>(null);
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
+  const reduceMotion = prefersReducedMotion();
   const items = [
     { view: "details", label: "일정", Icon: CalendarDays, onSelect: onOpenDetails },
     { view: "map", label: "지도", Icon: MapPinned, onSelect: onOpenMap },
     { view: "chat", label: "AI 대화", Icon: Bot, onSelect: onOpenChatList }
   ] satisfies Array<{ view: MobileEditorView; label: string; Icon: LucideIcon; onSelect: () => void }>;
 
-  function closeSheet() {
-    setOpen(false);
+  function clearPendingMotion() {
+    if (animationFrameRef.current != null) {
+      window.cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
+    }
+    if (closeTimerRef.current != null) {
+      window.clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
+    }
+  }
+
+  function finishClose() {
     setMounted(false);
     triggerButtonRef.current?.focus();
+    const pendingSelect = pendingSelectRef.current;
+    pendingSelectRef.current = null;
+    pendingSelect?.();
+  }
+
+  function closeSheet(afterClose?: () => void) {
+    pendingSelectRef.current = afterClose ?? null;
+    setOpen(false);
+    if (reduceMotion) {
+      finishClose();
+      return;
+    }
+    if (closeTimerRef.current != null) window.clearTimeout(closeTimerRef.current);
+    closeTimerRef.current = window.setTimeout(() => {
+      closeTimerRef.current = null;
+      finishClose();
+    }, 180);
   }
 
   useEffect(() => {
@@ -52,14 +83,27 @@ export function MobileViewSwitcher({
     if (open) closeButtonRef.current?.focus();
   }, [open]);
 
+  useEffect(() => {
+    return clearPendingMotion;
+  }, []);
+
   function selectItem(onSelect: () => void) {
-    closeSheet();
-    onSelect();
+    closeSheet(onSelect);
   }
 
   function openSheet() {
+    clearPendingMotion();
     setMounted(true);
-    setOpen(true);
+    if (reduceMotion) {
+      setOpen(true);
+      return;
+    }
+    animationFrameRef.current = window.requestAnimationFrame(() => {
+      animationFrameRef.current = window.requestAnimationFrame(() => {
+        animationFrameRef.current = null;
+        setOpen(true);
+      });
+    });
   }
 
   return (
@@ -78,16 +122,16 @@ export function MobileViewSwitcher({
         <div className="fixed inset-0 z-[1400]" role="presentation">
           <button
             className={[
-              "absolute inset-0 h-full w-full border-0 bg-black/45 p-0 transition-opacity duration-100 ease-out",
+              "absolute inset-0 h-full w-full border-0 bg-black/45 p-0 transition-opacity duration-150 ease-out",
               open ? "opacity-100" : "opacity-0"
             ].join(" ")}
             type="button"
             aria-label="화면 전환 닫기"
-            onClick={closeSheet}
+            onClick={() => closeSheet()}
           />
           <aside
             className={[
-              "absolute bottom-0 right-0 top-0 grid w-[min(320px,86vw)] transform-gpu grid-rows-[auto_1fr] border-l border-[var(--line)] bg-[var(--surface)] text-[var(--text)] transition-transform duration-100 ease-out will-change-transform",
+              "absolute bottom-0 right-0 top-0 grid w-[min(320px,86vw)] transform-gpu grid-rows-[auto_1fr] border-l border-[var(--line)] bg-[var(--surface)] text-[var(--text)] transition-transform duration-150 ease-out will-change-transform",
               open ? "translate-x-0 shadow-[var(--shadow-strong)]" : "translate-x-full shadow-none"
             ].join(" ")}
             role="dialog"
@@ -104,7 +148,7 @@ export function MobileViewSwitcher({
                 type="button"
                 ref={closeButtonRef}
                 aria-label="화면 전환 닫기"
-                onClick={closeSheet}
+                onClick={() => closeSheet()}
               >
                 <X className="block h-[21px] w-[21px]" strokeWidth={2.1} aria-hidden="true" />
               </button>
@@ -127,6 +171,10 @@ export function MobileViewSwitcher({
       ) : null}
     </>
   );
+}
+
+function prefersReducedMotion() {
+  return typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
 function DrawerItem(props: { active: boolean; Icon: LucideIcon; label: string; onClick: () => void }) {

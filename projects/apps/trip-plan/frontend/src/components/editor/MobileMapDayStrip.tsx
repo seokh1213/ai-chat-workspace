@@ -18,19 +18,19 @@ export function MobileMapDayStrip({ days, selectedDayId, itemCountByDay, onSelec
         return (
           <button
             className={[
-              "inline-flex min-h-9 min-w-max items-center gap-1.5 rounded-full border px-3 text-xs font-extrabold shadow-sm",
+              "inline-flex min-h-7 min-w-max items-center gap-1 rounded-full border bg-app-glass px-2 text-2xs font-medium leading-none",
               active
-                ? "border-[var(--teal)] bg-[var(--surface)] text-[var(--text)]"
-                : "border-[rgba(221,226,231,0.92)] bg-[var(--surface-glass)] text-[var(--secondary)]"
+                ? "border-app-day-active-border text-app-secondary"
+                : "border-app-day-border text-app-muted"
             ].join(" ")}
             key={day.id}
             type="button"
             aria-current={active ? "date" : undefined}
             onClick={() => onSelectDay(day.id)}
           >
-            <strong className="leading-4">Day {day.dayNumber}</strong>
-            <span aria-hidden="true" className="text-[var(--muted)]">·</span>
-            <span className="leading-4">{itemCountByDay.get(day.id) ?? 0}일정</span>
+            <strong className="text-2xs font-semibold leading-none">Day {day.dayNumber}</strong>
+            <span aria-hidden="true" className="text-app-day-divider">·</span>
+            <span className="text-2xs text-app-muted">{itemCountByDay.get(day.id) ?? 0}</span>
           </button>
         );
       })}

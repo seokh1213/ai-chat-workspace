@@ -15,7 +15,7 @@ export const MobileDayStrip = memo(function MobileDayStrip({ days, selectedDayId
 
   return (
     <nav
-      className="flex shrink-0 gap-2 overflow-x-auto border-b border-[var(--line)] bg-[var(--surface)] px-3 py-2.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      className="flex shrink-0 gap-1.5 overflow-x-auto border-b border-[var(--line)] bg-app-surface px-3 py-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       aria-label="날짜 선택"
     >
       {days.map((day) => (
@@ -48,20 +48,19 @@ const MobileDayButton = memo(function MobileDayButton(props: MobileDayButtonProp
   return (
     <button
       className={[
-        "grid min-h-14 min-w-20 content-center gap-0.5 rounded-lg border px-2.5 text-left",
+        "inline-flex min-h-7 min-w-max items-center gap-1 rounded-full border px-2 text-left text-2xs font-medium leading-none",
         props.active
-          ? "border-[var(--teal)] bg-[var(--teal-soft)] text-[var(--text)]"
-          : "border-[var(--line)] bg-[var(--surface)] text-[var(--text)]"
+          ? "border-app-day-active-border bg-app-surface text-app-secondary"
+          : "border-app-day-border bg-app-surface text-app-muted"
       ].join(" ")}
       type="button"
       aria-current={props.active ? "date" : undefined}
       onClick={() => props.onSelectDay(props.day.id)}
     >
-      <strong className="truncate text-[13px] font-extrabold leading-4">Day {props.day.dayNumber}</strong>
-      <span className="truncate text-[11px] font-bold leading-4 text-[var(--secondary)]">{mobileDayLabel(props.day)}</span>
-      <em className="truncate text-[11px] not-italic font-extrabold leading-4 text-[var(--muted)]">
-        {props.itemCount}개
-      </em>
+      <strong className="text-2xs font-semibold leading-none">Day {props.day.dayNumber}</strong>
+      <span className="text-app-day-divider" aria-hidden="true">·</span>
+      <span className="max-w-[3.9rem] truncate text-2xs text-app-muted">{mobileDayLabel(props.day)}</span>
+      <em className="text-2xs not-italic text-app-muted">{props.itemCount}</em>
     </button>
   );
 }, areMobileDayButtonsEqual);
